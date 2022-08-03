@@ -6,10 +6,14 @@ import pytorch_lightning as pl
 from .backbone import generate_backbone_EfficientPS, output_feature_size
 from .semantic_head import SemanticHead
 from .instance_head import InstanceHead
+# from .visualize_pred import visualize_pred
 from .panoptic_segmentation_module import panoptic_segmentation_module
 from .panoptic_metrics import generate_pred_panoptic
+from .panoptic_predictions import panoptic_predictions
 from panopticapi.evaluation import pq_compute
-
+import os.path
+# import cv2
+# import matplotlib.pyplot as plt
 
 class EffificientPS(pl.LightningModule):
     """
@@ -23,12 +27,19 @@ class EffificientPS(pl.LightningModule):
         - cfg (Config) : Config object from detectron2
         """
         super().__init__()
+        self.save_hyperparameters()
+        self.learning_rate = cfg.SOLVER.BASE_LR
         self.cfg = cfg
         self.backbone = generate_backbone_EfficientPS(cfg)
         self.fpn = TwoWayFpn(
             output_feature_size[cfg.MODEL_CUSTOM.BACKBONE.EFFICIENTNET_ID])
         self.semantic_head = SemanticHead(cfg.NUM_CLASS)
         self.instance_head = InstanceHead(cfg)
+        
+        # self.epoch = 0
+    
+    def on_train_start(self):
+        self.logger.log_hyperparams(self.hparams)
 
     def forward(self, x):
         # in lightning, forward defines the prediction/inference actions
@@ -39,9 +50,10 @@ class EffificientPS(pl.LightningModule):
         # training_step defined the train loop.
         # It is independent of forward
         _, loss = self.shared_step(batch)
+        
         # Add losses to logs
-        [self.log(k, v) for k,v in loss.items()]
-        self.log('train_loss', sum(loss.values()))
+        [self.log(k, v, batch_size=self.cfg.BATCH_SIZE) for k,v in loss.items()]
+        self.log('train_loss', sum(loss.values()), batch_size=self.cfg.BATCH_SIZE)
         return {'loss': sum(loss.values())}
 
     def shared_step(self, inputs):
@@ -51,7 +63,8 @@ class EffificientPS(pl.LightningModule):
         features = self.backbone.extract_endpoints(inputs['image'])
         pyramid_features = self.fpn(features)
         # Heads Predictions
-        semantic_logits, semantic_loss = self.semantic_head(pyramid_features, inputs)
+        output_size = inputs["image"][0].shape[-2:]
+        semantic_logits, semantic_loss = self.semantic_head(pyramid_features, output_size, inputs)
         pred_instance, instance_losses = self.instance_head(pyramid_features, inputs)
         # Output set up
         loss.update(semantic_loss)
@@ -61,48 +74,103 @@ class EffificientPS(pl.LightningModule):
         return predictions, loss
 
     def validation_step(self, batch, batch_idx):
+
+        
         predictions, loss = self.shared_step(batch)
         panoptic_result = panoptic_segmentation_module(self.cfg,
             predictions,
             self.device)
+        
+        self.log("semantic_loss", loss["semantic_loss"], batch_size=self.cfg.BATCH_SIZE, sync_dist=True)
+        self.log("val_loss", sum(loss.values()), batch_size=self.cfg.BATCH_SIZE, sync_dist=True)
         return {
             'val_loss': sum(loss.values()),
             'panoptic': panoptic_result,
             'image_id': batch['image_id']
         }
+        
 
     def validation_epoch_end(self, outputs):
-        # Create and save all predictions files
-        generate_pred_panoptic(self.cfg, outputs)
+        # print(outputs)
+        if self.local_rank == 0:
 
-        # Compute PQ metric with panpticapi
-        pq_res = pq_compute(
-            gt_json_file= os.path.join(self.cfg.DATASET_PATH,
-                                       self.cfg.VALID_JSON),
-            pred_json_file= os.path.join(self.cfg.DATASET_PATH,
-                                         self.cfg.PRED_JSON),
-            gt_folder= os.path.join(self.cfg.DATASET_PATH,
-                                    "gtFine/cityscapes_panoptic_val/"),
-            pred_folder=os.path.join(self.cfg.DATASET_PATH, self.cfg.PRED_DIR)
-        )
-        self.log("PQ", 100 * pq_res["All"]["pq"])
-        self.log("SQ", 100 * pq_res["All"]["sq"])
-        self.log("RQ", 100 * pq_res["All"]["rq"])
-        self.log("PQ_th", 100 * pq_res["Things"]["pq"])
-        self.log("SQ_th", 100 * pq_res["Things"]["sq"])
-        self.log("RQ_th", 100 * pq_res["Things"]["rq"])
-        self.log("PQ_st", 100 * pq_res["Stuff"]["pq"])
-        self.log("SQ_st", 100 * pq_res["Stuff"]["sq"])
-        self.log("RQ_st", 100 * pq_res["Stuff"]["rq"])
+            gathered_results = self.all_gather(outputs)
+
+           
+            #1. convert coco gt to panoptic gt
+            #2. Detections to coco format
+            #3. Detections coco format to panoptic format
+            #4. Evaluate
+            # Create and save all predictions files
+            generate_pred_panoptic(self.cfg, gathered_results)
+
+            # Compute PQ metric with panpticapi
+            pq_res = pq_compute(
+                gt_json_file= os.path.join(
+                    self.cfg.VKITTI_DATASET.DATASET_PATH.ROOT,
+                    self.cfg.VKITTI_DATASET.DATASET_PATH.VALID_JSON),
+                pred_json_file= os.path.join(
+                    self.cfg.VKITTI_DATASET.DATASET_PATH.ROOT,
+                    self.cfg.VKITTI_DATASET.DATASET_PATH.PRED_JSON),
+                gt_folder= os.path.join(
+                    self.cfg.VKITTI_DATASET.DATASET_PATH.ROOT,
+                    self.cfg.VKITTI_DATASET.DATASET_PATH.COCO_PANOPTIC_SEGMENTATION),
+                pred_folder=os.path.join(
+                    self.cfg.VKITTI_DATASET.DATASET_PATH.ROOT,
+                    self.cfg.VKITTI_DATASET.DATASET_PATH.PRED_DIR)
+            )
+            self.log("PQ", 100 * pq_res["All"]["pq"])
+            self.log("SQ", 100 * pq_res["All"]["sq"])
+            self.log("RQ", 100 * pq_res["All"]["rq"])
+            self.log("PQ_th", 100 * pq_res["Things"]["pq"])
+            self.log("SQ_th", 100 * pq_res["Things"]["sq"])
+            self.log("RQ_th", 100 * pq_res["Things"]["rq"])
+            self.log("PQ_st", 100 * pq_res["Stuff"]["pq"])
+            self.log("SQ_st", 100 * pq_res["Stuff"]["sq"])
+            self.log("RQ_st", 100 * pq_res["Stuff"]["rq"])
+        
+        else:
+            return 0
+
+    def predict_step(self, batch, batch_idx, dataloader_idx=0):
+
+        predictions = dict()
+        # Feature extraction
+        features = self.backbone.extract_endpoints(batch['image'])
+        pyramid_features = self.fpn(features)
+        # Heads Predictions
+        output_size = batch["image"][0].shape[-2:]
+        semantic_logits, _ = self.semantic_head(pyramid_features, output_size)
+        pred_instance, _ = self.instance_head(pyramid_features)
+
+        predictions.update({'semantic': semantic_logits})
+        predictions.update({'instance': pred_instance})
+
+        #Panoptic fusion
+        panoptic_result = panoptic_segmentation_module(self.cfg,
+            predictions,
+            self.device)
+
+        return {'panoptic': panoptic_result,
+            'image_id': batch['image_id']
+        }
+        
+    
+    def on_predict_epoch_end(self, results):
+        #Save Panoptic results
+        print("saving panoptic results")
+        panoptic_predictions(self.cfg, results[0])
+        
 
     def configure_optimizers(self):
+        print("Optimizer - using {} with lr {}".format(self.cfg.SOLVER.NAME, self.cfg.SOLVER.BASE_LR))
         if self.cfg.SOLVER.NAME == "Adam":
             self.optimizer = torch.optim.Adam(self.parameters(),
-                                         lr=self.cfg.SOLVER.BASE_LR,
+                                         lr=self.learning_rate,
                                          weight_decay=self.cfg.SOLVER.WEIGHT_DECAY)
         elif self.cfg.SOLVER.NAME == "SGD":
             self.optimizer = torch.optim.SGD(self.parameters(),
-                                        lr=self.cfg.SOLVER.BASE_LR,
+                                        lr=self.learning_rate,
                                         momentum=0.9,
                                         weight_decay=self.cfg.SOLVER.WEIGHT_DECAY)
         else:
@@ -112,9 +180,9 @@ class EffificientPS(pl.LightningModule):
             'optimizer': self.optimizer,
             'lr_scheduler': ReduceLROnPlateau(self.optimizer,
                                               mode='max',
-                                              patience=3,
+                                              patience=10,
                                               factor=0.1,
-                                              min_lr=1e-4,
+                                              min_lr=self.cfg.SOLVER.BASE_LR*1e-4,
                                               verbose=True),
             'monitor': 'PQ'
         }

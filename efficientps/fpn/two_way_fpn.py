@@ -17,6 +17,7 @@ class TwoWayFpn(nn.Module):
     """
     # TODO Reformat with functions
     def __init__(self, in_feature_shape):
+        # print("in_feature_shape", in_feature_shape)
         """
         Args:
         - in_feature_shape (List[int]) : size of feature at different levels
@@ -143,14 +144,14 @@ class TwoWayFpn(nn.Module):
         # [B, 256, x16W, x16H] -> [B, 256, x32W, x32H]
         b_up_x16_to_merge = F.interpolate(
             b_up_x16,
-            size=(inputs['reduction_5'].shape[2],
-                  inputs['reduction_5'].shape[3]),
+            size=(inputs['reduction_6'].shape[2],
+                  inputs['reduction_6'].shape[3]),
             mode='nearest'
         )
 
         #x32 size
         # [B, C, x32W, x32H]
-        b_up_x32 = inputs['reduction_5']
+        b_up_x32 = inputs['reduction_6']
         # [B, C, x32W, x32H] -> [B, 256, x32W, x32H]
         b_up_x32 = self.conv_b_up_x32(b_up_x32)
         b_up_x32 = self.iabn_b_up_x32(b_up_x32)
@@ -162,7 +163,7 @@ class TwoWayFpn(nn.Module):
 
         # x32 size
         # [B, C, x32W, x32H]
-        t_dn_x32 = inputs['reduction_5']
+        t_dn_x32 = inputs['reduction_6']
         # [B, C, x32W, x32H] -> [B, 256, x32W, x32H]
         t_dn_x32 = self.conv_t_dn_x32(t_dn_x32)
         t_dn_x32 = self.iabn_t_dn_x32(t_dn_x32)

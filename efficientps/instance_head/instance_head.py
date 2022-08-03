@@ -25,12 +25,13 @@ class InstanceHead(nn.Module):
 
     def forward(self, inputs, targets={}):
         losses = {}
-        proposals, losses_rpn = self.rpn(inputs, targets['instance'])
         if self.training:
+            proposals, losses_rpn = self.rpn(inputs, targets['instance'])
             _, losses_head = self.roi_heads(inputs, proposals, targets['instance'])
             losses.update(losses_rpn)
             losses.update(losses_head)
             return {}, losses
         else:
+            proposals, _ = self.rpn(inputs, None)
             pred_instances , _ = self.roi_heads(inputs, proposals)
             return pred_instances, {}

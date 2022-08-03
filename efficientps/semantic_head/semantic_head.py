@@ -16,7 +16,7 @@ class SemanticHead(nn.Module):
 
     def __init__(self, nb_class):
         super().__init__()
-
+        print("Training/Predicting semantic for {} classes, including background 0".format(nb_class))
         self.dpc_x32 = DPC()
         self.dpc_x16 = DPC()
 
@@ -32,7 +32,12 @@ class SemanticHead(nn.Module):
         self.cross_entropy_loss = nn.CrossEntropyLoss(reduction='none')
 
 
-    def forward(self, inputs, targets={}):
+    def forward(self, inputs, output_size, targets={}):
+
+        P16_shape = inputs["P_16"].shape[-2:]
+        P8_shape = inputs["P_8"].shape[-2:]
+        P4_shape = inputs["P_4"].shape[-2:]
+
         # TODO Make a loop
         # The forward is apply in a bottom up manner
         # x32 size
@@ -41,13 +46,13 @@ class SemanticHead(nn.Module):
         # [B, C, x32H, x32W] -> [B, C, x16H, x16W]
         p_32_to_merge = F.interpolate(
             p_32,
-            scale_factor=(2, 2),
+            size=P16_shape,
             mode='bilinear',
             align_corners=False)
         # [B, C, x16H, x16W] -> [B, C, x4H, x4W]
         p_32 = F.interpolate(
             p_32_to_merge,
-            scale_factor=(4, 4),
+            size=P4_shape,
             mode='bilinear',
             align_corners=False)
 
@@ -58,22 +63,31 @@ class SemanticHead(nn.Module):
         # [B, C, x16H, x16W] -> [B, C, x4H, x4W]
         p_16 = F.interpolate(
             p_16,
-            scale_factor=(4, 4),
+            size=P4_shape,
             mode='bilinear',
             align_corners=False)
         # [B, C, x16H, x16W] -> [B, C, x8H, x8W]
         p_16_to_merge = self.mc_16_to_8(p_16_to_merge)
-
+        p_16_to_merge = F.interpolate(
+            p_16_to_merge,
+            size=P8_shape,
+            mode='bilinear',
+            align_corners=False)
         # x8 size
         p_8 = inputs['P_8']
         p_8 = self.lsfe_x8(p_8)
         p_8 = torch.add(p_16_to_merge, p_8)
         # [B, C, x8H, x8W] -> [B, C, x4H, x4W]
         p_8_to_merge = self.mc_8_to_4(p_8)
+        p_8_to_merge = F.interpolate(
+            p_8_to_merge,
+            size=P4_shape,
+            mode='bilinear',
+            align_corners=False)
         # [B, C, x8H, x8W] -> [B, C, x4H, x4W]
         p_8 = F.interpolate(
             p_8,
-            scale_factor=(2, 2),
+            size=P4_shape,
             mode='bilinear',
             align_corners=False)
 
@@ -88,7 +102,7 @@ class SemanticHead(nn.Module):
         outputs = self.last_conv(outputs)
         outputs = F.interpolate(
             outputs,
-            scale_factor=(4, 4),
+            size=output_size,
             mode='bilinear',
             align_corners=False)
 
@@ -104,6 +118,8 @@ class SemanticHead(nn.Module):
         else w = 0
         We keep 25% of each image appy the weigth and then compute the mean.
         """
+        # print("semantic output shape: ", inputs.shape)
+        # print("targets uniques: ", torch.unique(targets))
         # First apply cross entropy on the image.
         loss = self.cross_entropy_loss(inputs, targets)
         # sort the loss and take 25 % worst pixel

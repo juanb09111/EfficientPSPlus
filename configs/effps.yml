@@ -1,0 +1,155 @@
+VERSION: 2
+MODEL:
+  ANCHOR_GENERATOR:
+    SIZES: [[32], [64], [128], [256]]  # One size for each in feature map
+    ASPECT_RATIOS: [[0.5, 1.0, 2.0]]  # Three aspect ratios (same for all in feature maps)
+  PROPOSAL_GENERATOR:
+    NAME: "RPNCustom"
+  RPN:
+    HEAD_NAME: "DepthwiseSepRPNHead" # Normal RPN Head "StandardRPNHead"
+    IN_FEATURES: ["P_4", "P_8", "P_16", "P_32"]
+    PRE_NMS_TOPK_TRAIN: 2000  # Per FPN level
+    PRE_NMS_TOPK_TEST: 2000  # Per FPN level
+    BBOX_REG_LOSS_TYPE: "smooth_l1"
+    BBOX_REG_LOSS_WEIGHT: 1.0
+    SMOOTH_L1_BETA: 0.11111111 # 1.0 / 9.0
+
+    # Detectron1 uses 2000 proposals per-batch,
+    # (See "modeling/rpn/rpn_outputs.py" for details of this legacy issue)
+    # which is approximately 1000 proposals per-image since the default batch size for FPN is 2.
+    POST_NMS_TOPK_TRAIN: 1000
+    POST_NMS_TOPK_TEST: 1000
+    SMOOTH_L1_BETA: 0.1111
+    IOU_THRESHOLDS: [0.3, 0.7]
+  ROI_HEADS:
+    NAME: "CustomROIHeads"
+    # BATCH_SIZE_PER_IMAGE: 256 # number of proposals to sample for training
+    # POSITIVE_FRACTION: 0.25 # fraction of positive (foreground) proposals to sample for training.
+    IN_FEATURES: ["P_4", "P_8", "P_16", "P_32"]
+    NUM_CLASSES: 3 # There is 3 instance in the vkitti2 dataset
+    # PROPOSAL_APPEND_GT:
+    IOU_THRESHOLDS: [0.5]
+    # IOU_LABELS:
+    SCORE_THRESH_TEST: 0.5 # First step of panoptic fusion module
+    NMS_THRESH_TEST: 0.5 # Second step of panoptic fusion module
+  ROI_BOX_HEAD:
+    POOLER_RESOLUTION: 7
+    POOLER_SAMPLING_RATIO: 2 # (maybe put to 2) The `sampling_ratio` parameter for the ROIAlign op.
+    POOLER_TYPE: "ROIAlign" # "ROIAlignV2"
+    SMOOTH_L1_BETA: 1.0
+    # SCORE_THRESH_TEST: 0.05
+    # NMS_THRESH_TEST: 0.5
+    BBOX_REG_LOSS_TYPE: "smooth_l1"
+    SMOOTH_L1_BETA: 1.0
+    BBOX_REG_LOSS_WEIGHT: 1.0
+  ROI_MASK_HEAD:
+    POOLER_RESOLUTION: 14
+    POOLER_TYPE: "ROIAlign"
+TEST:
+  DETECTIONS_PER_IMAGE: 100
+
+INPUT:
+  MIN_SIZE_TRAIN: (360,)
+  MAX_SIZE_TRAIN: 1200
+#### CUSTOM PARAMETER  #####
+
+# DATA
+# Path to cityscapes dataset
+# DATASET_PATH: "/home/ubuntu/Elix/cityscapes"
+# TRAIN_JSON: "gtFine/cityscapes_panoptic_train.json"
+# VALID_JSON: "gtFine/cityscapes_panoptic_val.json"
+# PRED_DIR: "preds" # Path of images generated in the dataset folder
+# PRED_JSON: "cityscapes_panoptic_preds.json" # Path in the dataset folde of the prediction json created
+
+# TRANSFORM based on albumentation https://albumentations.ai/
+TRANSFORM:
+  NORMALIZE:
+    MEAN: (0.485, 0.456, 0.406)
+    STD: (0.229, 0.224, 0.225)
+  RESIZE:
+    HEIGHT: 512
+    WIDTH: 1024
+  RANDOMCROP:
+    HEIGHT: 512
+    WIDTH: 1024
+  HFLIP:
+    PROB: 0.5
+
+# Solver
+SOLVER:
+  NAME: "Adam" # Adam or SGD
+  # BASE_LR: 0.0016
+  # BASE_LR: 0.01445439770745928
+  # BASE_LR: 0.002754228703338169
+  # BASE_LR: 0.0009120108393559097 #found with 3k samples
+  # BASE_LR: 0.003981071705534969 # found with 6k samples
+  BASE_LR: 0.001584893192461114 # found with all samples
+  # BASE_LR: 0.003 # found with all samples * 2
+  # BASE_LR: 7.585775750291837e-08
+  WEIGHT_DECAY: 0.1 # Only for SGD
+  WARMUP_ITERS: 0 # Set to 0 for no warmup
+  ACCUMULATE_GRAD: 1 # Number of accumulated epochs for accumulated gradient
+
+CALLBACKS:
+  CHECKPOINT_DIR: "logs/test"
+
+# Path to load a model
+# CHECKPOINT_PATH: "logs/test/epoch=17-step=17.ckpt"
+# CHECKPOINT_PATH: "logs/test/epoch=25-step=311.ckpt"
+# CHECKPOINT_PATH: "logs/test/epoch=2-step=899.ckpt"
+
+# CHECKPOINT_PATH: "logs/test/epoch=90-step=116115.ckpt" # best with BASE_LR 0.0015 and all samples
+CHECKPOINT_PATH: ""
+# CHECKPOINT_PATH: "logs/test/epoch=30-step=371.ckpt"
+BATCH_SIZE: 2
+PRECISION: 32 # Bit precision for mix precision training
+NUM_CLASS: 15 # there are 15 classes in vkitti2 dataset including background
+MODEL_CUSTOM:
+  BACKBONE:
+    EFFICIENTNET_ID: 5 # Id of the EfficienNet model
+    LOAD_PRETRAIN: True # Load pretrained EfficienNet model
+INFERENCE:
+  AREA_TRESH: 360 #1242 / 2 because it's made on image of resize size
+
+NUM_GPUS: 4
+DATASET_TYPE: "vkitti2"
+VKITTI_DATASET:
+  MAX_SAMPLES: 100 #Number of training samples, "" for all 
+  SPLIT_DATASET: True
+  SPLITS: [0.80, 0.15, 0.05]
+  SHUFFLE: True
+  NORMALIZE:
+    MEAN: (0.485, 0.456, 0.406)
+    STD: (0.229, 0.224, 0.225)
+  ORIGINAL_SIZE:
+    HEIGHT: 375
+    WIDTH: 1242
+  RANDOMCROP:
+    HEIGHT: 375
+    WIDTH: 1242
+  RESIZE:
+    HEIGHT: 375
+    WIDTH: 1242
+  CENTER_CROP:
+    HEIGHT: 360
+    WIDTH: 1200
+  HFLIP: 0.5
+  DEPTH:
+    K: 3
+    SPARSITY: 0.05
+    MAX_DEPTH: 50
+  DATASET_PATH:
+    ROOT: "datasets/vkitti2"
+    RGB: "vkitti_2.0.3_rgb"
+    SEMANTIC: "vkitti_2.0.3_classSegmentation"
+    INSTANCE: "vkitti_2.0.3_instanceSegmentation"
+    DEPTH: "vkitti_2.0.3_depth"
+    COCO_ANNOTATION: "kitti_coco.json"
+    COCO_PANOPTIC_SEGMENTATION: "kitti_coco_panoptic"
+    COCO_PANOPTIC_ANNOTATION: "kitti_coco_panoptic.json"
+    VALID_JSON: "kitti_coco_panoptic_valid.json"
+    PRED_DIR: "preds_valid"
+    PRED_JSON: "vkitti2_panoptic_predictions.json"
+  EXCLUDE: ["15-deg-left", "15-deg-right", "30-deg-left", "30-deg-right"]
+
+

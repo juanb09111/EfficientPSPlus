@@ -1,6 +1,8 @@
 import torch
 import torch.nn.functional as F
 from detectron2.structures import Instances
+import os.path
+import matplotlib.pyplot as plt
 
 def panoptic_segmentation_module(cfg, outputs, device):
     """
@@ -22,6 +24,12 @@ def panoptic_segmentation_module(cfg, outputs, device):
     """
     # If no instance prediction pass the threshold score > 0.5 IoU > 0.5
     # Returns the argmax of semantic logits
+    # outputs["instance"] = None
+    # print("instance: ", outputs["instance"])
+    # for i, sem in enumerate(outputs["semantic"]):
+    #     plt.imshow(torch.argmax(sem, dim=0).cpu().numpy())
+    #     plt.savefig(os.path.join(cfg.CALLBACKS.CHECKPOINT_DIR, "semantic_output_epoch_{}_idx_{}.png".format(epoch, i)))
+
     if outputs['instance'] is None:
         return compute_output_only_semantic(outputs['semantic'])
     panoptic_result = []
@@ -35,6 +43,7 @@ def panoptic_segmentation_module(cfg, outputs, device):
                         compute_output_only_semantic(outputs['semantic'][i]))
             continue
         semantic = outputs['semantic'][i]
+        
         # Preprocessing
         Mla = scale_resize_pad(instance).to(device)
         # Compute instances
@@ -42,6 +51,7 @@ def panoptic_segmentation_module(cfg, outputs, device):
         Fl = compute_fusion(Mla, Mlb)
         # First merge instances with stuff predictions
         semantic_stuff_logits = semantic[:11,:,:]
+        # print("SHAPE", semantic.shape, Fl.shape)
         inter_logits = torch.cat([semantic_stuff_logits, Fl], dim=0)
         inter_preds = torch.argmax(inter_logits, dim=0)
         # Create canvas and merge everything
@@ -96,8 +106,10 @@ def scale_resize_pad(instance):
         w = int(box[2]) - int(box[0])
         h = int(box[3]) - int(box[1])
         # Resize mask to bbox dimension
+        # print("before", mask.shape)
         mask = F.interpolate(mask.unsqueeze(0), size=(h, w), mode='bilinear')
         mask = mask[0,0,...]
+        # print("after", mask.shape)
         # Start from an empty canvas to have padding
         canva = torch.zeros(instance.image_size)
         # Fit the upsample mask in the bbox prediction position
@@ -154,7 +166,8 @@ def create_canvas_thing(inter_preds, instance):
     canvas = torch.zeros_like(inter_preds)
     # Retrieve classes of all instance prediction (sorted by detectron2)
     classes = instance.pred_classes
-    instance_train_id_to_eval_id = [24, 25, 26, 27, 28, 31, 32, 33, 0]
+    # instance_train_id_to_eval_id = [24, 25, 26, 27, 28, 31, 32, 33, 0]
+    instance_train_id_to_eval_id = [12, 13, 14, 0]
     # Used to label each instance incrementally
     track_of_instance = {}
     # Loop on instance prediction
@@ -181,13 +194,15 @@ def compute_output_only_semantic(semantic):
     - semantic (tensor) : Output of the semantic head (either for the full
                           batch or for one image)
     """
-    semantic_train_id_to_eval_id = [7, 8, 11, 12, 13, 17, 19, 20, 21, 22,
-                                23, 24, 25, 26, 27, 28, 31, 32, 33, 0]
+    # semantic_train_id_to_eval_id = [7, 8, 11, 12, 13, 17, 19, 20, 21, 22,
+    #                             23, 24, 25, 26, 27, 28, 31, 32, 33, 0]
+    semantic_train_id_to_eval_id = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
     if len(semantic.shape) == 3:
         semantic_output = torch.argmax(semantic, dim=0)
     else:
         semantic_output = torch.argmax(semantic, dim=1)
     # apply reversed to avoid issue with reindexing the value
+    # print("output uniques: ", torch.unique(semantic_output))
     for train_id in reversed(torch.unique(semantic_output)):
         mask = torch.where(semantic_output == train_id)
         # Create panoptic ids for instance thing or stuff
@@ -211,7 +226,8 @@ def add_stuff_from_semantic(cfg, canvas, semantic):
     """
     # Link between semantic and stuff classes in semantic prediction instance
     # classes have higher class training values
-    stuff_train_id_to_eval_id = [7, 8, 11, 12, 13, 17, 19, 20, 21, 22, 23]
+    # stuff_train_id_to_eval_id = [7, 8, 11, 12, 13, 17, 19, 20, 21, 22, 23]
+    stuff_train_id_to_eval_id = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
     semantic_output = torch.argmax(semantic, dim=0)
     # Reverse to avoid overwrite classes information
     for train_id in reversed(torch.unique(semantic_output)):

@@ -101,6 +101,7 @@ class CustomROIHeads(ROIHeads):
 
         if self.training:
             losses = self._forward_box(features, proposals)
+            # print(self._forward_mask(features, proposals))
             losses.update(self._forward_mask(features, proposals))
             return proposals, losses
         else:
