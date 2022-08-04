@@ -1,5 +1,5 @@
-# %%
 
+import os
 import os.path
 import math
 import torch
@@ -18,7 +18,7 @@ from torch.utils.data import random_split
 from detectron2.structures import Instances, BitMasks, Boxes
 import cv2
 import time
-# %%
+
 torch.manual_seed(0)
 
 class vkittiDataset(torch.utils.data.Dataset):
@@ -505,21 +505,24 @@ def get_dataloaders(cfg):
         train_collate_fn = collate_fn_wrapper(train_set)
         data_loader_train = torch.utils.data.DataLoader(train_set,
                                                         batch_size=batch_size,
-                                                        num_workers=40,
+                                                        num_workers=0,
+                                                        # pin_memory=True,
                                                         collate_fn=train_collate_fn,
-                                                        drop_last=False)
+                                                        drop_last=True)
         val_collate_fn = collate_fn_wrapper(val_set)
         data_loader_val = torch.utils.data.DataLoader(val_set,
                                                       batch_size=batch_size,
-                                                      num_workers=40,
+                                                      num_workers=0,
+                                                    #   pin_memory=True,
                                                       collate_fn=val_collate_fn,
-                                                      drop_last=False)
+                                                      drop_last=True)
         test_collate_fn = collate_fn_wrapper(test_set)
         data_loader_test = torch.utils.data.DataLoader(test_set,
                                                       batch_size=batch_size,
-                                                      num_workers=40,
+                                                      num_workers=0,
+                                                    #   pin_memory=True,
                                                       collate_fn=test_collate_fn,
-                                                      drop_last=False)
+                                                      drop_last=True)
 
         return data_loader_train, data_loader_val, data_loader_test
 
@@ -528,9 +531,10 @@ def get_dataloaders(cfg):
         collate_fn = collate_fn_wrapper(dataset)
         data_loader = torch.utils.data.DataLoader(dataset,
                                                   batch_size=batch_size,
-                                                  num_workers=40,
+                                                  num_workers=0,
+                                                #   pin_memory=True,
                                                   collate_fn=collate_fn,
-                                                  drop_last=False)
+                                                  drop_last=True)
     return data_loader, None, None
 
 

@@ -3,6 +3,7 @@ import torch
 from torch.optim.lr_scheduler import ReduceLROnPlateau, StepLR
 from .fpn import TwoWayFpn
 import pytorch_lightning as pl
+from pytorch_lightning.utilities import rank_zero_only
 from .backbone import generate_backbone_EfficientPS, output_feature_size
 from .semantic_head import SemanticHead
 from .instance_head import InstanceHead
@@ -12,6 +13,7 @@ from .panoptic_metrics import generate_pred_panoptic
 from .panoptic_predictions import panoptic_predictions
 from panopticapi.evaluation import pq_compute
 import os.path
+import numpy as np
 # import cv2
 # import matplotlib.pyplot as plt
 
@@ -84,19 +86,23 @@ class EffificientPS(pl.LightningModule):
         self.log("semantic_loss", loss["semantic_loss"], batch_size=self.cfg.BATCH_SIZE, sync_dist=True)
         self.log("val_loss", sum(loss.values()), batch_size=self.cfg.BATCH_SIZE, sync_dist=True)
         return {
-            'val_loss': sum(loss.values()),
             'panoptic': panoptic_result,
             'image_id': batch['image_id']
         }
         
-
+    # @rank_zero_only
     def validation_epoch_end(self, outputs):
         # print(outputs)
+        gathered_results = self.all_gather(outputs)
+        # print("gathered_results", gathered_results)
         if self.local_rank == 0:
 
-            gathered_results = self.all_gather(outputs)
+            for gr in gathered_results:
+                #Flatten results
+                gr["image_id"] = [im_id for sublist in gr["image_id"] for im_id in sublist]
+                gr["panoptic"] = [pan for sublist in gr["panoptic"] for pan in sublist]
+                
 
-           
             #1. convert coco gt to panoptic gt
             #2. Detections to coco format
             #3. Detections coco format to panoptic format
@@ -112,25 +118,26 @@ class EffificientPS(pl.LightningModule):
                 pred_json_file= os.path.join(
                     self.cfg.VKITTI_DATASET.DATASET_PATH.ROOT,
                     self.cfg.VKITTI_DATASET.DATASET_PATH.PRED_JSON),
-                gt_folder= os.path.join(
-                    self.cfg.VKITTI_DATASET.DATASET_PATH.ROOT,
-                    self.cfg.VKITTI_DATASET.DATASET_PATH.COCO_PANOPTIC_SEGMENTATION),
+                gt_folder= os.path.join(self.cfg.VKITTI_DATASET.DATASET_PATH.ROOT),
                 pred_folder=os.path.join(
                     self.cfg.VKITTI_DATASET.DATASET_PATH.ROOT,
-                    self.cfg.VKITTI_DATASET.DATASET_PATH.PRED_DIR)
+                    self.cfg.VKITTI_DATASET.DATASET_PATH.VALID_PRED_DIR)
             )
-            self.log("PQ", 100 * pq_res["All"]["pq"])
-            self.log("SQ", 100 * pq_res["All"]["sq"])
-            self.log("RQ", 100 * pq_res["All"]["rq"])
-            self.log("PQ_th", 100 * pq_res["Things"]["pq"])
-            self.log("SQ_th", 100 * pq_res["Things"]["sq"])
-            self.log("RQ_th", 100 * pq_res["Things"]["rq"])
-            self.log("PQ_st", 100 * pq_res["Stuff"]["pq"])
-            self.log("SQ_st", 100 * pq_res["Stuff"]["sq"])
-            self.log("RQ_st", 100 * pq_res["Stuff"]["rq"])
+            
+            self.log("PQ", 100 * pq_res["All"]["pq"] * self.cfg.NUM_GPUS, sync_dist=True)
+            self.log("SQ", 100 * pq_res["All"]["sq"], rank_zero_only=True)
+            self.log("RQ", 100 * pq_res["All"]["rq"], rank_zero_only=True)
+            self.log("PQ_th", 100 * pq_res["Things"]["pq"], rank_zero_only=True)
+            self.log("SQ_th", 100 * pq_res["Things"]["sq"], rank_zero_only=True)
+            self.log("RQ_th", 100 * pq_res["Things"]["rq"], rank_zero_only=True)
+            self.log("PQ_st", 100 * pq_res["Stuff"]["pq"], rank_zero_only=True)
+            self.log("SQ_st", 100 * pq_res["Stuff"]["sq"], rank_zero_only=True)
+            self.log("RQ_st", 100 * pq_res["Stuff"]["rq"], rank_zero_only=True)
         
         else:
-            return 0
+            self.log("PQ", 0, sync_dist=True)
+        
+       
 
     def predict_step(self, batch, batch_idx, dataloader_idx=0):
 

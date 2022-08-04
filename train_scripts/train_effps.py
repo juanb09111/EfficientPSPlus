@@ -40,8 +40,8 @@ def train(args):
     if cfg.DATASET_TYPE == "vkitti2":
         train_loader, valid_loader, _ = get_dataloaders(cfg)
 
-    print("Converting dataloader to coco_panoptic json")
-    dataloader_2_coco_panoptic(cfg, valid_loader)
+    # print("Converting dataloader to coco_panoptic json")
+    # dataloader_2_coco_panoptic(cfg, valid_loader)
     # Create model or load a checkpoint
     if os.path.exists(cfg.CHECKPOINT_PATH):
         print('""""""""""""""""""""""""""""""""""""""""""""""')
@@ -70,7 +70,7 @@ def train(args):
     trainer = pl.Trainer(
         # weights_summary='full',
         # auto_lr_find=True,
-        log_every_n_steps=10,
+        log_every_n_steps=250,
         gpus=args.ngpus,
         # distributed_backend='ddp',
         accelerator='ddp',

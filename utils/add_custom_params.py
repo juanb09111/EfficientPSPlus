@@ -61,6 +61,7 @@ def add_custom_params(cfg):
     cfg.VKITTI_DATASET.DATASET_PATH.COCO_PANOPTIC_SEGMENTATION = "kitti_coco_panoptic"
     cfg.VKITTI_DATASET.DATASET_PATH.COCO_PANOPTIC_ANNOTATION = "kitti_coco_panoptic.json"
     cfg.VKITTI_DATASET.DATASET_PATH.VALID_JSON = "kitti_coco.json"
+    cfg.VKITTI_DATASET.DATASET_PATH.VALID_PRED_DIR = "preds_valid"
     cfg.VKITTI_DATASET.DATASET_PATH.PRED_DIR = "preds"
     cfg.VKITTI_DATASET.DATASET_PATH.PRED_JSON = "vkitti2_panoptic_predictions.json"
     

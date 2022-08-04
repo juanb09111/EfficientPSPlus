@@ -99,7 +99,7 @@ CALLBACKS:
 # CHECKPOINT_PATH: "logs/test/epoch=2-step=899.ckpt"
 
 # CHECKPOINT_PATH: "logs/test/epoch=90-step=116115.ckpt" # best with BASE_LR 0.0015 and all samples
-CHECKPOINT_PATH: ""
+CHECKPOINT_PATH: "logs/test/epoch=8-step=11483.ckpt" #Epoch 8 all samples PQ tracking
 # CHECKPOINT_PATH: "logs/test/epoch=30-step=371.ckpt"
 BATCH_SIZE: 2
 PRECISION: 32 # Bit precision for mix precision training
@@ -107,14 +107,14 @@ NUM_CLASS: 15 # there are 15 classes in vkitti2 dataset including background
 MODEL_CUSTOM:
   BACKBONE:
     EFFICIENTNET_ID: 5 # Id of the EfficienNet model
-    LOAD_PRETRAIN: True # Load pretrained EfficienNet model
+    LOAD_PRETRAIN: False # Load pretrained EfficienNet model
 INFERENCE:
-  AREA_TRESH: 360 #1242 / 2 because it's made on image of resize size
+  AREA_TRESH: 600 #1242 / 2 because it's made on image of resize size
 
 NUM_GPUS: 4
 DATASET_TYPE: "vkitti2"
 VKITTI_DATASET:
-  MAX_SAMPLES: 100 #Number of training samples, "" for all 
+  MAX_SAMPLES: null #Number of training samples, "" for all 
   SPLIT_DATASET: True
   SPLITS: [0.80, 0.15, 0.05]
   SHUFFLE: True
@@ -148,7 +148,8 @@ VKITTI_DATASET:
     COCO_PANOPTIC_SEGMENTATION: "kitti_coco_panoptic"
     COCO_PANOPTIC_ANNOTATION: "kitti_coco_panoptic.json"
     VALID_JSON: "kitti_coco_panoptic_valid.json"
-    PRED_DIR: "preds_valid"
+    VALID_PRED_DIR: "preds_valid"
+    PRED_DIR: "preds"
     PRED_JSON: "vkitti2_panoptic_predictions.json"
   EXCLUDE: ["15-deg-left", "15-deg-right", "30-deg-left", "30-deg-right"]
 

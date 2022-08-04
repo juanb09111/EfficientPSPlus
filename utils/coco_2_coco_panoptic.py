@@ -146,7 +146,7 @@ def convert_detection_to_panoptic_coco_format(input_json_file,
     img_ids = coco_detection.getImgIds()
     categories_list = coco_detection.cats.values()
     categories_list = list(map(lambda cat: {**cat, 
-        "isthing": cat["supercategory"] == "object",
+        "isthing": 1 if cat["supercategory"] == "object" else 0,
         "color": rgb_2_class[cat["id"] - 1][1]
         }, categories_list))
     # print(coco_detection.cats.values())
