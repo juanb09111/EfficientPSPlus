@@ -250,7 +250,6 @@ class vkittiDataset(torch.utils.data.Dataset):
 
         # Num of instance objects
         num_objs = torch.as_tensor(num_objs, dtype=torch.int64)
-
         # Annotation is in dictionary format
         my_annotation = {}
         my_annotation["boxes"] = boxes
@@ -283,7 +282,6 @@ class vkittiDataset(torch.utils.data.Dataset):
         
         # depth_img = np.asarray(Image.open(depth_filename))
         
-
         if self.transforms is not None:
             
             transformed = self.transforms(

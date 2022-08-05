@@ -31,7 +31,7 @@ def generate_pred_panoptic(cfg, outputs):
     """
     # Create prediction dir if needed
     if cfg.DATASET_TYPE == "vkitti2":
-        pred_dir = os.path.join(cfg.VKITTI_DATASET.DATASET_PATH.ROOT, cfg.VKITTI_DATASET.DATASET_PATH.PRED_DIR)
+        pred_dir = os.path.join(cfg.VKITTI_DATASET.DATASET_PATH.ROOT, cfg.VKITTI_DATASET.DATASET_PATH.VALID_PRED_DIR)
         if not os.path.exists(pred_dir): os.makedirs(pred_dir)
 
     annotations = []

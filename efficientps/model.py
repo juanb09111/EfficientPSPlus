@@ -153,6 +153,8 @@ class EffificientPS(pl.LightningModule):
         predictions.update({'semantic': semantic_logits})
         predictions.update({'instance': pred_instance})
 
+        #Visualize Predictions, mask and semantic
+        # visualize_pred(self.cfg, batch["image"], predictions, self.device, batch_idx)
         #Panoptic fusion
         panoptic_result = panoptic_segmentation_module(self.cfg,
             predictions,

@@ -41,7 +41,7 @@ def train(args):
         train_loader, valid_loader, _ = get_dataloaders(cfg)
 
     # print("Converting dataloader to coco_panoptic json")
-    # dataloader_2_coco_panoptic(cfg, valid_loader)
+    dataloader_2_coco_panoptic(cfg, valid_loader)
     # Create model or load a checkpoint
     if os.path.exists(cfg.CHECKPOINT_PATH):
         print('""""""""""""""""""""""""""""""""""""""""""""""')

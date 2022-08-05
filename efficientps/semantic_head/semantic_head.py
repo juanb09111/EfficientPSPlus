@@ -107,9 +107,9 @@ class SemanticHead(nn.Module):
             align_corners=False)
 
         if 'semantic' in targets.keys():
-            return self.softmax(outputs), self.loss(outputs, targets['semantic'])
+            return outputs, self.loss(outputs, targets['semantic'])
         else:
-            return self.softmax(outputs), {}
+            return outputs, {}
 
     def loss(self, inputs, targets):
         """
@@ -253,3 +253,4 @@ class DPC(nn.Module):
         # Last conv
         outputs = self.conv_last(concat)
         return self.iabn_last(outputs)
+                            

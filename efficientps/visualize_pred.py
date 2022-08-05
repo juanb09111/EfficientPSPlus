@@ -51,6 +51,7 @@ def visualize_instance_pred(cfg, instance_pred, batch_idx, device):
 
     for idx, pred in enumerate(instance_pred):
         instance = check_bbox_size(pred)
+        # print("instance classes", instance.pred_classes)
         if len(instance.pred_boxes.tensor) > 0:
             masks = scale_resize_pad(instance).to(device)
             masks = torch.where(masks > 0.5, int(1), 0)

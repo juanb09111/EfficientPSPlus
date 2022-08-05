@@ -4,6 +4,7 @@ from detectron2.structures import Instances
 import os.path
 import matplotlib.pyplot as plt
 
+
 def panoptic_segmentation_module(cfg, outputs, device):
     """
     Take output of both semantic and instance head and combine them to create
@@ -31,7 +32,7 @@ def panoptic_segmentation_module(cfg, outputs, device):
     #     plt.savefig(os.path.join(cfg.CALLBACKS.CHECKPOINT_DIR, "semantic_output_epoch_{}_idx_{}.png".format(epoch, i)))
 
     if outputs['instance'] is None:
-        return compute_output_only_semantic(outputs['semantic'])
+        return compute_output_only_semantic(cfg, outputs['semantic'])
     panoptic_result = []
     # Loop on Batch images / Instances
     for i, instance in enumerate(outputs['instance']):
@@ -40,22 +41,23 @@ def panoptic_segmentation_module(cfg, outputs, device):
         # semantic information only
         if len(instance.pred_boxes.tensor) == 0:
             panoptic_result.append(
-                        compute_output_only_semantic(outputs['semantic'][i]))
+                        compute_output_only_semantic(cfg, outputs['semantic'][i]))
             continue
         semantic = outputs['semantic'][i]
         
         # Preprocessing
         Mla = scale_resize_pad(instance).to(device)
         # Compute instances
-        Mlb = create_mlb(semantic, instance).to(device)
+        Mlb = create_mlb(cfg, semantic, instance).to(device)
         Fl = compute_fusion(Mla, Mlb)
         # First merge instances with stuff predictions
-        semantic_stuff_logits = semantic[:11,:,:]
-        # print("SHAPE", semantic.shape, Fl.shape)
+        semantic_stuff_logits = semantic[:cfg.VKITTI_DATASET.STUFF_CLASSES,:,:]
+        # print("SHAPE", semantic.shape, Fl.shape, semantic_stuff_logits.shape)
+        # print(torch.max(Fl), torch.max(semantic_stuff_logits), torch.min(Fl), torch.min(semantic_stuff_logits))
         inter_logits = torch.cat([semantic_stuff_logits, Fl], dim=0)
-        inter_preds = torch.argmax(inter_logits, dim=0)
+        inter_preds = torch.argmax(F.softmax(inter_logits, dim=0), dim=0)
         # Create canvas and merge everything
-        canvas = create_canvas_thing(inter_preds, instance)
+        canvas = create_canvas_thing(cfg, inter_preds, instance)
         canvas = add_stuff_from_semantic(cfg, canvas, semantic)
         panoptic_result.append(canvas)
 
@@ -117,7 +119,7 @@ def scale_resize_pad(instance):
         Mla.append(canva)
     return torch.stack(Mla)
 
-def create_mlb(semantic, instance):
+def create_mlb(cfg, semantic, instance):
     """
     Create the semantic logit corresponding to each class prediction.
     Args:
@@ -130,12 +132,13 @@ def create_mlb(semantic, instance):
     Mlb = []
     boxes = instance.pred_boxes.tensor
     classes = instance.pred_classes
+    # print("classes", classes)
     for bbox, cls in zip(boxes, classes):
         # Start from a black image
         canva = torch.zeros(instance.image_size)
         # Add the semantic value from the predicted class at the predicted bbox location
         canva[int(bbox[1]):int(bbox[3]), int(bbox[0]):int(bbox[2])] = \
-            semantic[cls,int(bbox[1]):int(bbox[3]),int(bbox[0]):int(bbox[2])]
+            semantic[cls+cfg.VKITTI_DATASET.STUFF_CLASSES,int(bbox[1]):int(bbox[3]),int(bbox[0]):int(bbox[2])]
         Mlb.append(canva)
     return torch.stack(Mlb)
 
@@ -151,7 +154,7 @@ def compute_fusion(Mla, Mlb):
     """
     return (torch.sigmoid(Mla) + torch.sigmoid(Mlb)) * (Mla + Mlb)
 
-def create_canvas_thing(inter_preds, instance):
+def create_canvas_thing(cfg, inter_preds, instance):
     """
     From the intermediate prediction retrieve only the logits corresponding to
     thing classes.
@@ -173,7 +176,7 @@ def create_canvas_thing(inter_preds, instance):
     # Loop on instance prediction
     for id_instance, cls in enumerate(classes):
         # The stuff channel are the 11 first channel so we add an offset
-        id_instance += 11
+        id_instance += cfg.VKITTI_DATASET.STUFF_CLASSES
         # Compute mask for each instance and verify that no prediction has been
         # made
         mask = torch.where((inter_preds == id_instance) & (canvas==0))
@@ -185,7 +188,7 @@ def create_canvas_thing(inter_preds, instance):
             track_of_instance.update({int(cls):nb_instance+1})
     return canvas
 
-def compute_output_only_semantic(semantic):
+def compute_output_only_semantic(cfg, semantic):
     """
     In case where no instance are suitable, we are returning the panoptic
     prediction base only on the semantic outputs.
@@ -206,7 +209,7 @@ def compute_output_only_semantic(semantic):
     for train_id in reversed(torch.unique(semantic_output)):
         mask = torch.where(semantic_output == train_id)
         # Create panoptic ids for instance thing or stuff
-        if train_id > 11:
+        if train_id > cfg.VKITTI_DATASET.STUFF_CLASSES:
             semantic_output[mask] = semantic_train_id_to_eval_id[train_id] * 1000
         else:
             semantic_output[mask] = semantic_train_id_to_eval_id[train_id]
@@ -228,7 +231,7 @@ def add_stuff_from_semantic(cfg, canvas, semantic):
     # classes have higher class training values
     # stuff_train_id_to_eval_id = [7, 8, 11, 12, 13, 17, 19, 20, 21, 22, 23]
     stuff_train_id_to_eval_id = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
-    semantic_output = torch.argmax(semantic, dim=0)
+    semantic_output = torch.argmax(F.softmax(semantic, dim=0), dim=0)
     # Reverse to avoid overwrite classes information
     for train_id in reversed(torch.unique(semantic_output)):
         # If the detected section is a thing
