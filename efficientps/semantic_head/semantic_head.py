@@ -253,4 +253,3 @@ class DPC(nn.Module):
         # Last conv
         outputs = self.conv_last(concat)
         return self.iabn_last(outputs)
-                            
