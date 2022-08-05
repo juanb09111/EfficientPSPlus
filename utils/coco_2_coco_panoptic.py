@@ -197,7 +197,7 @@ def coco2coco_panoptic(args):
     #     os.mkdir(segmentations_folder)
     #copy folder structure
     if not os.path.isdir(segmentations_folder):
-        src_folder = input_json = os.path.join("..", cfg.VKITTI_DATASET.DATASET_PATH.ROOT, cfg.VKITTI_DATASET.DATASET_PATH.RGB)
+        src_folder = os.path.join("..", cfg.VKITTI_DATASET.DATASET_PATH.ROOT, cfg.VKITTI_DATASET.DATASET_PATH.RGB)
         shutil.copytree(src_folder,
                     segmentations_folder,
                     ignore=ignore_files)
