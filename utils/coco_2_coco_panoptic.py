@@ -22,7 +22,7 @@ import os
 
 import PIL.Image as Image
 
-from panopticapi.utils import get_traceback, IdGenerator, save_json
+from panopticapi.utils import get_traceback, IdGenerator
 
 
 # defining the function to ignore the files

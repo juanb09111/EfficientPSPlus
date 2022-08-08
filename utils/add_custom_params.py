@@ -60,6 +60,8 @@ def add_custom_params(cfg):
     cfg.VKITTI_DATASET.DATASET_PATH.DEPTH = "vkitti_2.0.3_depth"
     cfg.VKITTI_DATASET.DATASET_PATH.COCO_ANNOTATION = "vkitti_2.0.3_coco.json"
     cfg.VKITTI_DATASET.DATASET_PATH.COCO_PANOPTIC_SEGMENTATION = "kitti_coco_panoptic"
+    cfg.VKITTI_DATASET.DATASET_PATH.TWO_CH_PANOPTIC_SEGMENTATION = "kitti_2ch_panoptic"
+    cfg.VKITTI_DATASET.DATASET_PATH.TWO_CH_IMAGE_JSON = "kitti_2ch_panoptic.json"
     cfg.VKITTI_DATASET.DATASET_PATH.COCO_PANOPTIC_ANNOTATION = "kitti_coco_panoptic.json"
     cfg.VKITTI_DATASET.DATASET_PATH.VALID_JSON = "kitti_coco.json"
     cfg.VKITTI_DATASET.DATASET_PATH.VALID_PRED_DIR = "preds_valid"
