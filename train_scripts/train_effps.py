@@ -75,7 +75,7 @@ def train(args):
         # distributed_backend='ddp',
         accelerator='ddp',
         num_sanity_val_steps=0,
-        # fast_dev_run=True,
+        fast_dev_run=False if cfg.SOLVER.FAST_DEV_RUN is None else cfg.SOLVER.FAST_DEV_RUN,
         callbacks=[early_stopping, checkpoint],
         # precision=cfg.PRECISION,
         resume_from_checkpoint=cfg.CHECKPOINT_PATH,
