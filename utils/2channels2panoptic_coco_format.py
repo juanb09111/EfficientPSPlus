@@ -96,7 +96,7 @@ def convert_single_core(proc_id, image_set, categories, source_folder, segmentat
             pan_format[mask] = color
             segm_info.append({"id": segment_id,
             "iscrowd": 0,
-            "area": area,
+            "area": int(area),
             "category_id": int(sem)})
         
         file_path = os.path.join(segmentations_folder, "/".join(file_name.split("/")[1:]))
