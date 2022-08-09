@@ -58,7 +58,7 @@ def generate_pred_panoptic(cfg, outputs):
                 img_data['segments_info'].append(
                     {
                         'id': int(instance),
-                        "area": area,
+                        "area": int(area),
                         'category_id': int(instance)
                                        if instance < 1000
                                        else int(instance / 1000)
