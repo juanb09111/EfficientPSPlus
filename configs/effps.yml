@@ -89,6 +89,7 @@ SOLVER:
   WEIGHT_DECAY: 0.1 # Only for SGD
   WARMUP_ITERS: 0 # Set to 0 for no warmup
   ACCUMULATE_GRAD: 1 # Number of accumulated epochs for accumulated gradient
+  FAST_DEV_RUN: null
 
 CALLBACKS:
   CHECKPOINT_DIR: "logs/test"
@@ -100,8 +101,9 @@ CALLBACKS:
 
 # CHECKPOINT_PATH: "logs/test/epoch=90-step=116115.ckpt" # best with BASE_LR 0.0015 and all samples
 # CHECKPOINT_PATH: "logs/test/epoch=8-step=11483.ckpt" #Epoch 8 all samples PQ tracking
-CHECKPOINT_PATH: "" #Epoch 8 all samples PQ tracking
+# CHECKPOINT_PATH: "" #Epoch 8 all samples PQ tracking
 # CHECKPOINT_PATH: "logs/test/epoch=30-step=371.ckpt"
+CHECKPOINT_PATH: ""
 BATCH_SIZE: 2
 PRECISION: 32 # Bit precision for mix precision training
 NUM_CLASS: 15 # there are 15 classes in vkitti2 dataset including background

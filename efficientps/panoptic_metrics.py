@@ -51,12 +51,14 @@ def generate_pred_panoptic(cfg, outputs):
             # Create segment_info data
             img_data['segments_info'] = []
             img_panoptic = img_panoptic.cpu().numpy()
-            for instance in np.unique(img_panoptic):
+            instances, areas = np.unique(img_panoptic, return_counts=True)
+            for instance, area in zip(instances, areas):
                 if instance == 0:
                     continue
                 img_data['segments_info'].append(
                     {
                         'id': int(instance),
+                        "area": area,
                         'category_id': int(instance)
                                        if instance < 1000
                                        else int(instance / 1000)

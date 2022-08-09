@@ -83,9 +83,9 @@ def convert_single_core(proc_id, image_set, categories, source_folder, segmentat
 
         id_generator = IdGenerator(categories)
 
-        l = np.unique(pan)
+        l, areas = np.unique(pan, return_counts=True)
         segm_info = []
-        for el in l:
+        for el, area in zip(l, areas):
             sem = el // OFFSET
             if sem == VOID:
                 continue
@@ -96,6 +96,7 @@ def convert_single_core(proc_id, image_set, categories, source_folder, segmentat
             pan_format[mask] = color
             segm_info.append({"id": segment_id,
             "iscrowd": 0,
+            "area": area,
             "category_id": int(sem)})
         
         file_path = os.path.join(segmentations_folder, "/".join(file_name.split("/")[1:]))
