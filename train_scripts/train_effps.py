@@ -43,18 +43,18 @@ def train(args):
     print("Converting dataloader to coco_panoptic json")
     dataloader_2_coco_panoptic(cfg, valid_loader)
     # Create model or load a checkpoint
-    if os.path.exists(cfg.CHECKPOINT_PATH):
+    if os.path.exists(cfg.CHECKPOINT_PATH_TRAINING):
         print('""""""""""""""""""""""""""""""""""""""""""""""')
-        print("Loading model from {}".format(cfg.CHECKPOINT_PATH))
+        print("Loading model from {}".format(cfg.CHECKPOINT_PATH_TRAINING))
         print('""""""""""""""""""""""""""""""""""""""""""""""')
         efficientps = EffificientPS.load_from_checkpoint(cfg=cfg,
-            checkpoint_path=cfg.CHECKPOINT_PATH)
+            checkpoint_path=cfg.CHECKPOINT_PATH_TRAINING)
     else:
         print('""""""""""""""""""""""""""""""""""""""""""""""')
         print("Creating a new model")
         print('""""""""""""""""""""""""""""""""""""""""""""""')
         efficientps = EffificientPS(cfg)
-        cfg.CHECKPOINT_PATH = None
+        cfg.CHECKPOINT_PATH_TRAINING = None
 
     # logger.info(efficientps.print)
     ModelSummary(efficientps, max_depth=-1)
@@ -78,7 +78,7 @@ def train(args):
         fast_dev_run=False if cfg.SOLVER.FAST_DEV_RUN is None else cfg.SOLVER.FAST_DEV_RUN,
         callbacks=[early_stopping, checkpoint],
         # precision=cfg.PRECISION,
-        resume_from_checkpoint=cfg.CHECKPOINT_PATH,
+        resume_from_checkpoint=cfg.CHECKPOINT_PATH_TRAINING,
         # gradient_clip_val=0,
         accumulate_grad_batches=cfg.SOLVER.ACCUMULATE_GRAD
     )

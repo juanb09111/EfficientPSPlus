@@ -36,18 +36,18 @@ def inference(args):
         _, valid_loader, _ = get_dataloaders(cfg)
 
     # Create model or load a checkpoint
-    if os.path.exists(cfg.CHECKPOINT_PATH):
+    if os.path.exists(cfg.CHECKPOINT_PATH_INFERENCE):
         print('""""""""""""""""""""""""""""""""""""""""""""""')
-        print("Loading model from {}".format(cfg.CHECKPOINT_PATH))
+        print("Loading model from {}".format(cfg.CHECKPOINT_PATH_INFERENCE))
         print('""""""""""""""""""""""""""""""""""""""""""""""')
         efficientps = EffificientPS.load_from_checkpoint(cfg=cfg,
-            checkpoint_path=cfg.CHECKPOINT_PATH)
+            checkpoint_path=cfg.CHECKPOINT_PATH_INFERENCE)
     else:
         print('""""""""""""""""""""""""""""""""""""""""""""""')
         print("Creating a new model")
         print('""""""""""""""""""""""""""""""""""""""""""""""')
         efficientps = EffificientPS(cfg)
-        cfg.CHECKPOINT_PATH = None
+        cfg.CHECKPOINT_PATH_INFERENCE = None
 
     ModelSummary(efficientps, max_depth=-1) 
     trainer = pl.Trainer(
@@ -60,7 +60,7 @@ def inference(args):
         num_sanity_val_steps=0,
         # fast_dev_run=True,
         # precision=cfg.PRECISION,
-        resume_from_checkpoint=cfg.CHECKPOINT_PATH,
+        resume_from_checkpoint=cfg.CHECKPOINT_PATH_INFERENCE,
         # gradient_clip_val=0,
         accumulate_grad_batches=cfg.SOLVER.ACCUMULATE_GRAD
     )

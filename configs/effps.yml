@@ -103,7 +103,8 @@ CALLBACKS:
 # CHECKPOINT_PATH: "logs/test/epoch=8-step=11483.ckpt" #Epoch 8 all samples PQ tracking
 # CHECKPOINT_PATH: "" #Epoch 8 all samples PQ tracking
 # CHECKPOINT_PATH: "logs/test/epoch=30-step=371.ckpt"
-CHECKPOINT_PATH: ""
+CHECKPOINT_PATH_TRAINING: ""
+CHECKPOINT_PATH_INFERENCE: ""
 BATCH_SIZE: 2
 PRECISION: 32 # Bit precision for mix precision training
 NUM_CLASS: 15 # there are 15 classes in vkitti2 dataset including background

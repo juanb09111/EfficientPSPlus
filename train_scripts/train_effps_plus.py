@@ -46,18 +46,18 @@ def train(gpu, args):
         train_loader, valid_loader, _ = get_dataloaders(cfg, num_replicas=args.world_size, rank=rank)
 
     # Create model or load a checkpoint
-    if os.path.exists(cfg.CHECKPOINT_PATH):
+    if os.path.exists(cfg.CHECKPOINT_PATH_TRAINING):
         print('""""""""""""""""""""""""""""""""""""""""""""""')
-        print("Loading model from {}".format(cfg.CHECKPOINT_PATH))
+        print("Loading model from {}".format(cfg.CHECKPOINT_PATH_TRAINING))
         print('""""""""""""""""""""""""""""""""""""""""""""""')
         efficientps = EffificientPS.load_from_checkpoint(cfg=cfg,
-            checkpoint_path=cfg.CHECKPOINT_PATH)
+            checkpoint_path=cfg.CHECKPOINT_PATH_TRAINING)
     else:
         print('""""""""""""""""""""""""""""""""""""""""""""""')
         print("Creating a new model")
         print('""""""""""""""""""""""""""""""""""""""""""""""')
         efficientps = EffificientPS(cfg)
-        cfg.CHECKPOINT_PATH = None
+        cfg.CHECKPOINT_PATH_TRAINING = None
 
     logger.info(efficientps.print)
     # Callbacks / Hooks
@@ -76,7 +76,7 @@ def train(gpu, args):
         # fast_dev_run=True,
         callbacks=[early_stopping, checkpoint],
         precision=cfg.PRECISION,
-        resume_from_checkpoint=cfg.CHECKPOINT_PATH,
+        resume_from_checkpoint=cfg.CHECKPOINT_PATH_TRAINING,
         gradient_clip_val=15,
         accumulate_grad_batches=cfg.SOLVER.ACCUMULATE_GRAD
     )

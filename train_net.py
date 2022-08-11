@@ -48,7 +48,7 @@ def add_custom_param(cfg):
     cfg.SOLVER.ACCUMULATE_GRAD = 1
     # Runner
     cfg.BATCH_SIZE = 1
-    cfg.CHECKPOINT_PATH = ""
+    cfg.CHECKPOINT_PATH_TRAINING = ""
     cfg.PRECISION = 32
     # Callbacks
     cfg.CALLBACKS = CfgNode()

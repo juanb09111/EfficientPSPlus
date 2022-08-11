@@ -92,7 +92,8 @@ def add_custom_params(cfg):
     cfg.SOLVER.FAST_DEV_RUN = None
     # Runner
     cfg.BATCH_SIZE = 2
-    cfg.CHECKPOINT_PATH = ""
+    cfg.CHECKPOINT_PATH_TRAINING = ""
+    cfg.CHECKPOINT_PATH_INFERENCE = ""
     cfg.PRECISION = 32
     # Callbacks
     cfg.CALLBACKS = CfgNode()
