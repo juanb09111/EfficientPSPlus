@@ -205,8 +205,7 @@ class vkittiDataset(torch.utils.data.Dataset):
             scene in s and basename in s and weather in s)][0]
         
         semantic_mask = Image.open(semantic_img_filename)
-        # self.mask_to_class(np.asarray(semantic_mask))
-        semantic_mask = self.mask_to_class(np.asarray(semantic_mask))
+        semantic_mask = self.mask_to_class(np.array(semantic_mask))
         semantic_mask = np.asarray(semantic_mask, dtype=np.long)
         
         num_objs = len(coco_annotation)
@@ -485,7 +484,7 @@ def test_dataset(cfg, dataset, item):
 
     # Visualize annotations
     image = source_img.cpu().numpy().transpose((1, 2, 0))*255
-    image = visualize_masks(instance.get("gt_masks"))
+    image = visualize_masks(instance.get("gt_masks").tensor)
     image = visualize_bboxes(image, instance.get("gt_boxes"))
     cv2.imwrite(os.path.join(cfg.CALLBACKS.CHECKPOINT_DIR, "dataset_test_v2", "masks_{}.png".format(basename)), image)
 
