@@ -109,7 +109,7 @@ def scale_resize_pad(instance):
         h = int(box[3]) - int(box[1])
         # Resize mask to bbox dimension
         # print("before", mask.shape)
-        mask = F.interpolate(mask.unsqueeze(0), size=(h, w), mode='bilinear')
+        mask = F.interpolate(mask.unsqueeze(0), size=(h, w), mode='bilinear', align_corners=False)
         mask = mask[0,0,...]
         # print("after", mask.shape)
         # Start from an empty canvas to have padding
