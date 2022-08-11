@@ -70,7 +70,7 @@ def train(args):
     trainer = pl.Trainer(
         # weights_summary='full',
         # auto_lr_find=True,
-        log_every_n_steps=2500,
+        log_every_n_steps=1276,
         gpus=args.ngpus,
         # distributed_backend='ddp',
         accelerator='ddp',
