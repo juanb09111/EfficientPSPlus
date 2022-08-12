@@ -6,18 +6,22 @@ import torch.multiprocessing as mp
 from argparse import ArgumentParser
 from train_scripts import train_effps_plus
 from train_scripts import train_effps
+from train_scripts import train_effps_semantic
 
 # # from ignite.contrib.handlers.param_scheduler import PiecewiseLinear
 
 
 MODELS = ["EfficientPS",
-          "EfficientPS_Plus"]
+          "EfficientPS_Plus",
+          "EfficientPS_semantic"]
 
 def get_train_loop(model_name):
     if model_name == "EfficientPS_Plus":
         return train_effps_plus.train
     if model_name == "EfficientPS":
         return train_effps.train
+    if model_name == "EfficientPS_semantic":
+        return train_effps_semantic.train
     
           
 

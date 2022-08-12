@@ -67,6 +67,8 @@ def add_custom_params(cfg):
     cfg.VKITTI_DATASET.DATASET_PATH.VALID_PRED_DIR = "preds_valid"
     cfg.VKITTI_DATASET.DATASET_PATH.PRED_DIR = "preds"
     cfg.VKITTI_DATASET.DATASET_PATH.PRED_JSON = "vkitti2_panoptic_predictions.json"
+    cfg.VKITTI_DATASET.DATASET_PATH.PRED_DIR_SEMANTIC = "preds_semantic"
+    cfg.VKITTI_DATASET.DATASET_PATH.PRED_JSON_SEMANTIC = "vkitti2_semantic_predictions.json"
     
     cfg.VKITTI_DATASET.EXCLUDE = ["15-deg-left", "15-deg-right", "30-deg-left", "30-deg-right"]
 
@@ -90,6 +92,7 @@ def add_custom_params(cfg):
     cfg.SOLVER.NAME = "SGD"
     cfg.SOLVER.ACCUMULATE_GRAD = 1
     cfg.SOLVER.FAST_DEV_RUN = None
+    cfg.SOLVER.BASE_LR_SEMANTIC = 0.0013182567385564075
     # Runner
     cfg.BATCH_SIZE = 2
     cfg.CHECKPOINT_PATH_TRAINING = ""

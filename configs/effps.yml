@@ -77,13 +77,15 @@ TRANSFORM:
 
 # Solver
 SOLVER:
-  NAME: "Adam" # Adam or SGD
+  NAME: "SGD" # Adam or SGD
   # BASE_LR: 0.0016
   # BASE_LR: 0.01445439770745928
   # BASE_LR: 0.002754228703338169
   # BASE_LR: 0.0009120108393559097 #found with 3k samples
   # BASE_LR: 0.003981071705534969 # found with 6k samples
-  BASE_LR: 0.001584893192461114 # found with all samples
+  BASE_LR: 0.00024547089156850307 # found will all samples, panoptic, min_lr=1e-4
+  BASE_LR_SEMANTIC: 0.0013182567385564075 # found with all samples semantic segmentation only min_lr 1e-4
+  # BASE_LR: 0.9 # found with all samples
   # BASE_LR: 0.003 # found with all samples * 2
   # BASE_LR: 7.585775750291837e-08
   WEIGHT_DECAY: 0.1 # Only for SGD
@@ -92,7 +94,7 @@ SOLVER:
   FAST_DEV_RUN: null
 
 CALLBACKS:
-  CHECKPOINT_DIR: "logs/test"
+  CHECKPOINT_DIR: "logs/"
 
 # Path to load a model
 # CHECKPOINT_PATH: "logs/test/epoch=17-step=17.ckpt"
@@ -157,7 +159,9 @@ VKITTI_DATASET:
     VALID_JSON: "kitti_coco_panoptic_valid.json"
     VALID_PRED_DIR: "preds_valid"
     PRED_DIR: "preds"
+    PRED_DIR_SEMANTIC: "preds_semantic"
     PRED_JSON: "vkitti2_panoptic_predictions.json"
+    PRED_JSON_SEMANTIC: "vkitti2_semantic_predictions.json"
   EXCLUDE: ["15-deg-left", "15-deg-right", "30-deg-left", "30-deg-right"]
 
 

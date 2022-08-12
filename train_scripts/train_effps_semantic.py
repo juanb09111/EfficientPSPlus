@@ -10,7 +10,7 @@ from detectron2.config import get_cfg
 from detectron2.utils.events import _CURRENT_STORAGE_STACK, EventStorage
 
 
-from efficientps import EffificientPS
+from efficientps import Semantic
 from utils.add_custom_params import add_custom_params
 from utils.dataloader_2_coco_panoptic import dataloader_2_coco_panoptic
 from datasets.vkitti_dataset import get_dataloaders
@@ -30,7 +30,7 @@ def train(args):
     if not os.path.exists(cfg.CALLBACKS.CHECKPOINT_DIR):
         os.makedirs(cfg.CALLBACKS.CHECKPOINT_DIR)
     logger.addHandler(logging.FileHandler(
-        os.path.join(cfg.CALLBACKS.CHECKPOINT_DIR,"core.log"), mode='w'))
+        os.path.join(cfg.CALLBACKS.CHECKPOINT_DIR,"core_semantic.log"), mode='w'))
     # with open(args.config) as file:
     #     logger.info(file.read())
     # Initialise Custom storage to avoid error when using detectron 2
@@ -40,27 +40,25 @@ def train(args):
     if cfg.DATASET_TYPE == "vkitti2":
         train_loader, valid_loader, _ = get_dataloaders(cfg)
 
-    print("Converting dataloader to coco_panoptic json")
-    dataloader_2_coco_panoptic(cfg, valid_loader)
     # Create model or load a checkpoint
     if os.path.exists(cfg.CHECKPOINT_PATH_TRAINING):
         print('""""""""""""""""""""""""""""""""""""""""""""""')
         print("Loading model from {}".format(cfg.CHECKPOINT_PATH_TRAINING))
         print('""""""""""""""""""""""""""""""""""""""""""""""')
-        efficientps = EffificientPS.load_from_checkpoint(cfg=cfg,
+        efficientps = Semantic.load_from_checkpoint(cfg=cfg,
             checkpoint_path=cfg.CHECKPOINT_PATH_TRAINING)
     else:
         print('""""""""""""""""""""""""""""""""""""""""""""""')
         print("Creating a new model")
         print('""""""""""""""""""""""""""""""""""""""""""""""')
-        efficientps = EffificientPS(cfg)
+        efficientps = Semantic(cfg)
         cfg.CHECKPOINT_PATH_TRAINING = None
 
     # logger.info(efficientps.print)
     ModelSummary(efficientps, max_depth=-1)
     # Callbacks / Hooks
-    early_stopping = EarlyStopping('PQ', patience=30, mode='max')
-    checkpoint = ModelCheckpoint(monitor='PQ',
+    early_stopping = EarlyStopping('IoU', patience=30, mode='max')
+    checkpoint = ModelCheckpoint(monitor='IoU',
                                  mode='max',
                                  dirpath=cfg.CALLBACKS.CHECKPOINT_DIR,
                                  save_last=True,
@@ -84,6 +82,7 @@ def train(args):
     )
     logger.addHandler(logging.StreamHandler())
     # trainer.tune(efficientps, train_loader, valid_loader)
-    # lr_finder = trainer.tuner.lr_find(efficientps, train_loader, valid_loader, min_lr=1e-4, max_lr=0.1)
+    # lr_finder = trainer.tuner.lr_find(efficientps, train_loader, valid_loader, min_lr=1e-5, max_lr=0.1)
     # print(lr_finder.suggestion())
+    # print(lr_finder.results)
     trainer.fit(efficientps, train_loader, val_dataloaders=valid_loader)

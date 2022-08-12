@@ -30,8 +30,9 @@ def panoptic_segmentation_module(cfg, outputs, device):
     # for i, sem in enumerate(outputs["semantic"]):
     #     plt.imshow(torch.argmax(sem, dim=0).cpu().numpy())
     #     plt.savefig(os.path.join(cfg.CALLBACKS.CHECKPOINT_DIR, "semantic_output_epoch_{}_idx_{}.png".format(epoch, i)))
-
-    if outputs['instance'] is None:
+    if "instance" not in outputs.keys():
+        return compute_output_only_semantic(cfg, outputs['semantic'])
+    if outputs['instance'] is None: 
         return compute_output_only_semantic(cfg, outputs['semantic'])
     panoptic_result = []
     # Loop on Batch images / Instances
