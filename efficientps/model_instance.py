@@ -83,7 +83,7 @@ class Instance(pl.LightningModule):
                 boxes=instance.get("pred_boxes").tensor,
                 labels=instance.get("pred_classes"),
                 masks=instance.get("pred_masks"),
-                scores=instance.get("pred_scores")
+                scores=instance.get("scores")
             ) for instance in predictions["instance"]]
             
             # Metric
