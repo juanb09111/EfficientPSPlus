@@ -91,6 +91,31 @@ def check_bbox_size(instance):
     new_instance.scores = instance.scores[inds]
     return new_instance
 
+def scale_resize_masks(instance):
+    """
+    In order to use both semantic and instances, mask must be rescale and fit
+    the dimension of the bboxes predictions.
+    Args:
+    - instance (Instance) : an Instance object from detectron containg all
+                            proposal bbox, masks, classes and scores
+    """
+    
+    boxes = instance.pred_boxes.tensor
+    masks = instance.pred_masks
+    resized_masks = []
+    # Loop on proposal
+    for box, mask in zip(boxes, masks):
+        # Retrieve bbox dimension
+        box = torch.round(box).cpu().numpy()
+        w = int(box[2]) - int(box[0])
+        h = int(box[3]) - int(box[1])
+        # Resize mask to bbox dimension
+        # print("before", mask.shape)
+        mask = F.interpolate(mask.unsqueeze(0), size=(h, w), mode='bilinear', align_corners=False)
+        mask = mask[0,0,...]
+        resized_masks.append(mask)
+    return resized_masks
+
 def scale_resize_pad(instance):
     """
     In order to use both semantic and instances, mask must be rescale and fit

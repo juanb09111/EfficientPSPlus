@@ -1,3 +1,4 @@
+import torch
 import os
 import logging
 import pytorch_lightning as pl
@@ -71,11 +72,13 @@ def train(args):
         # weights_summary='full',
         # auto_lr_find=True,
         log_every_n_steps=1276,
-        gpus=args.ngpus,
+        devices=list(range(torch.cuda.device_count())),
+        # gpus=args.ngpus,s
         # distributed_backend='ddp',
-        accelerator='ddp',
+        strategy="ddp",
+        accelerator='gpu',
         num_sanity_val_steps=0,
-        fast_dev_run=False if cfg.SOLVER.FAST_DEV_RUN is None else cfg.SOLVER.FAST_DEV_RUN,
+        fast_dev_run=cfg.SOLVER.FAST_DEV_RUN if args.fast_dev else False,
         callbacks=[early_stopping, checkpoint],
         # precision=cfg.PRECISION,
         resume_from_checkpoint=cfg.CHECKPOINT_PATH_TRAINING,

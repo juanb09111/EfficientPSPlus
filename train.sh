@@ -5,8 +5,8 @@
 #SBATCH -J JP_JOB
 #
 # Let's redirect job's out some other file than default slurm-%jobid-out
-#SBATCH --output=res/res_%a.txt
-#SBATCH --error=res/err_%a.txt
+#SBATCH --output=res/res_instance_%a.txt
+#SBATCH --error=res/err_instance_%a.txt
 #
 #!/bin/bash
 #SBATCH --job-name=lagosben
@@ -53,4 +53,4 @@ echo "r$SLURM_NODEID Launching python script"
 # python eval_coco.py $SLURM_TASK_ARRAY_ID
 # python train_efusion_vkitti.py $SLURM_TASK_ARRAY_ID
 # python -u train.py --model_name=$MODEL_NAME --config=$CONFIG --nodes=1 --ngpus=4 --ip_adress $ip1 $SLURM_TASK_ARRAY_ID
-python -u train.py --model_name=EfficientPS_semantic --config=configs/effps.yml --nodes=1 --ngpus=4 --ip_adress $ip1
+python -u train.py --model_name=EfficientPS_instance --config=configs/effps.yml --nodes=1 --ngpus=4 --ip_adress $ip1

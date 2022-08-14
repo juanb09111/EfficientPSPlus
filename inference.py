@@ -31,7 +31,8 @@ if __name__ == "__main__":
     parser.add_argument('--model_name', type=str, required=True, help="Name of the model to train. Look up in models.py")
 
     parser.add_argument('--config', type=str, required=True, help="Config file from configs/")
-  
+    
+    parser.add_argument('--fast_dev', action='store_true')
     
     args = parser.parse_args()
 

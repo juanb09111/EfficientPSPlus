@@ -58,7 +58,7 @@ def inference(args):
         # distributed_backend='ddp',
         accelerator='ddp',
         num_sanity_val_steps=0,
-        # fast_dev_run=True,
+        fast_dev_run=cfg.SOLVER.FAST_DEV_RUN if args.fast_dev else False,
         # precision=cfg.PRECISION,
         resume_from_checkpoint=cfg.CHECKPOINT_PATH_INFERENCE,
         # gradient_clip_val=0,

@@ -7,13 +7,15 @@ from argparse import ArgumentParser
 from train_scripts import train_effps_plus
 from train_scripts import train_effps
 from train_scripts import train_effps_semantic
+from train_scripts import train_effps_instance
 
 # # from ignite.contrib.handlers.param_scheduler import PiecewiseLinear
 
 
 MODELS = ["EfficientPS",
           "EfficientPS_Plus",
-          "EfficientPS_semantic"]
+          "EfficientPS_semantic",
+          "EfficientPS_instance"]
 
 def get_train_loop(model_name):
     if model_name == "EfficientPS_Plus":
@@ -22,6 +24,9 @@ def get_train_loop(model_name):
         return train_effps.train
     if model_name == "EfficientPS_semantic":
         return train_effps_semantic.train
+    if model_name == "EfficientPS_instance":
+        return train_effps_instance.train
+
     
           
 
@@ -40,6 +45,8 @@ if __name__ == "__main__":
     parser.add_argument('--model_name', type=str, required=True, help="Name of the model to train. Look up in models.py")
 
     parser.add_argument('--config', type=str, required=True, help="Config file from configs/")
+
+    parser.add_argument('--fast_dev', action='store_true')
   
     
     args = parser.parse_args()

@@ -11,7 +11,7 @@ from detectron2.config import get_cfg
 from detectron2.utils.events import _CURRENT_STORAGE_STACK, EventStorage
 
 
-from efficientps import Semantic
+from efficientps import Instance
 from utils.add_custom_params import add_custom_params
 from datasets.vkitti_dataset import get_dataloaders
 
@@ -45,20 +45,20 @@ def train(args):
         print('""""""""""""""""""""""""""""""""""""""""""""""')
         print("Loading model from {}".format(cfg.CHECKPOINT_PATH_TRAINING))
         print('""""""""""""""""""""""""""""""""""""""""""""""')
-        efficientps = Semantic.load_from_checkpoint(cfg=cfg,
+        effps_instance = Instance.load_from_checkpoint(cfg=cfg,
             checkpoint_path=cfg.CHECKPOINT_PATH_TRAINING)
     else:
         print('""""""""""""""""""""""""""""""""""""""""""""""')
         print("Creating a new model")
         print('""""""""""""""""""""""""""""""""""""""""""""""')
-        efficientps = Semantic(cfg)
+        effps_instance = Instance(cfg)
         cfg.CHECKPOINT_PATH_TRAINING = None
 
     # logger.info(efficientps.print)
-    ModelSummary(efficientps, max_depth=-1)
+    ModelSummary(effps_instance, max_depth=-1)
     # Callbacks / Hooks
-    early_stopping = EarlyStopping('IoU', patience=30, mode='max')
-    checkpoint = ModelCheckpoint(monitor='IoU',
+    early_stopping = EarlyStopping('map_segm', patience=30, mode='max')
+    checkpoint = ModelCheckpoint(monitor='map_segm',
                                  mode='max',
                                  dirpath=cfg.CALLBACKS.CHECKPOINT_DIR,
                                  save_last=True,
@@ -70,7 +70,7 @@ def train(args):
         # auto_lr_find=True,
         log_every_n_steps=1276,
         devices=list(range(torch.cuda.device_count())),
-        # gpus=args.ngpus
+        # gpus=args.ngpus,
         # distributed_backend='ddp',
         strategy="ddp",
         accelerator='gpu',
@@ -83,8 +83,8 @@ def train(args):
         accumulate_grad_batches=cfg.SOLVER.ACCUMULATE_GRAD
     )
     logger.addHandler(logging.StreamHandler())
-    # trainer.tune(efficientps, train_loader, valid_loader)
-    # lr_finder = trainer.tuner.lr_find(efficientps, train_loader, valid_loader, min_lr=1e-5, max_lr=0.1)
+    # trainer.tune(effps_instance, train_loader, valid_loader)
+    # lr_finder = trainer.tuner.lr_find(effps_instance, train_loader, valid_loader, min_lr=1e-4, max_lr=0.1)
     # print(lr_finder.suggestion())
     # print(lr_finder.results)
-    trainer.fit(efficientps, train_loader, val_dataloaders=valid_loader)
+    trainer.fit(effps_instance, train_loader, val_dataloaders=valid_loader)
