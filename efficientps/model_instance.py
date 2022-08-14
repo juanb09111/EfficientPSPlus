@@ -82,7 +82,7 @@ class Instance(pl.LightningModule):
             preds = [dict(
                 boxes=instance.get("pred_boxes").tensor,
                 labels=instance.get("pred_classes"),
-                masks=instance.get("pred_masks"),
+                masks=instance.get("pred_masks").to(torch.uint8),
                 scores=instance.get("scores")
             ) for instance in predictions["instance"]]
             
