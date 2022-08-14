@@ -57,8 +57,8 @@ def train(args):
     # logger.info(efficientps.print)
     ModelSummary(effps_instance, max_depth=-1)
     # Callbacks / Hooks
-    early_stopping = EarlyStopping('map_segm', patience=30, mode='max')
-    checkpoint = ModelCheckpoint(monitor='map_segm',
+    early_stopping = EarlyStopping('map_bbox', patience=30, mode='max')
+    checkpoint = ModelCheckpoint(monitor='map_bbox',
                                  mode='max',
                                  dirpath=cfg.CALLBACKS.CHECKPOINT_DIR,
                                  save_last=True,

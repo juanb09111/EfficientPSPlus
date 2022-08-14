@@ -7,8 +7,6 @@ from torchmetrics.detection.mean_ap import MeanAveragePrecision
 from .fpn import TwoWayFpn
 from .backbone import generate_backbone_EfficientPS, output_feature_size
 from .instance_head import InstanceHead
-from .panoptic_segmentation_module import  check_bbox_size, scale_resize_masks
-from detectron2.structures import Instances, BitMasks, Boxes
 import os.path
 import numpy as np
 
@@ -32,7 +30,7 @@ class Instance(pl.LightningModule):
             output_feature_size[cfg.MODEL_CUSTOM.BACKBONE.EFFICIENTNET_ID])
         self.instance_head = InstanceHead(cfg)
         self.valid_acc_bbx = MeanAveragePrecision()
-        self.valid_acc_sgm = MeanAveragePrecision(iou_type="segm")
+        # self.valid_acc_sgm = MeanAveragePrecision(iou_type="segm")
         
         # self.epoch = 0
     
@@ -82,7 +80,7 @@ class Instance(pl.LightningModule):
             preds = [dict(
                 boxes=instance.get("pred_boxes").tensor,
                 labels=instance.get("pred_classes"),
-                masks=instance.get("pred_masks").to(torch.uint8),
+                # masks=instance.get("pred_masks").to(torch.uint8),
                 scores=instance.get("scores")
             ) for instance in predictions["instance"]]
             
@@ -91,9 +89,9 @@ class Instance(pl.LightningModule):
             self.valid_acc_sgm(preds, target)
             
             self.log('map_bbox', self.valid_acc_bbx, on_step=False, on_epoch=True)
-            self.log('map_segm', self.valid_acc_sgm, on_step=False, on_epoch=True)
+            # self.log('map_segm', self.valid_acc_sgm, on_step=False, on_epoch=True)
         else:
-            self.log("map_segm", 0.0, batch_size=self.cfg.BATCH_SIZE, sync_dist=True)
+            # self.log("map_segm", 0.0, batch_size=self.cfg.BATCH_SIZE, sync_dist=True)
             self.log("map_bbox", 0.0, batch_size=self.cfg.BATCH_SIZE, sync_dist=True)
         
         self.log("val_loss", sum(loss.values()), batch_size=self.cfg.BATCH_SIZE, sync_dist=True)
@@ -149,7 +147,7 @@ class Instance(pl.LightningModule):
                                               factor=0.1,
                                               min_lr=self.cfg.SOLVER.BASE_LR_INSTANCE*1e-4,
                                               verbose=True),
-            'monitor': 'map_segm'
+            'monitor': 'map_bbox'
         }
 
     def optimizer_step(self, current_epoch, batch_nb, optimizer, optimizer_idx, closure, on_tpu=False, using_native_amp=False, using_lbfgs=False):
