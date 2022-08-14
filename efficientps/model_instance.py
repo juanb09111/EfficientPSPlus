@@ -86,7 +86,7 @@ class Instance(pl.LightningModule):
             
             # Metric
             self.valid_acc_bbx(preds, target)
-            self.valid_acc_sgm(preds, target)
+            # self.valid_acc_sgm(preds, target)
             
             self.log('map_bbox', self.valid_acc_bbx, on_step=False, on_epoch=True)
             # self.log('map_segm', self.valid_acc_sgm, on_step=False, on_epoch=True)
