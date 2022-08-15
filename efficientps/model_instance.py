@@ -77,6 +77,7 @@ class Instance(pl.LightningModule):
         
         if predictions["instance"] != None:       
 
+            #TODO: scale masks
             preds = [dict(
                 boxes=instance.get("pred_boxes").tensor,
                 labels=instance.get("pred_classes"),
@@ -84,19 +85,21 @@ class Instance(pl.LightningModule):
                 scores=instance.get("scores")
             ) for instance in predictions["instance"]]
             
-            # Metric
-            self.valid_acc_bbx(preds, target)
-            # self.valid_acc_sgm(preds, target)
-            
-            self.log('map_bbox', self.valid_acc_bbx, on_step=False, on_epoch=True)
-            # self.log('map_segm', self.valid_acc_sgm, on_step=False, on_epoch=True)
         else:
-            # self.log("map_segm", 0.0, batch_size=self.cfg.BATCH_SIZE, sync_dist=True)
-            self.log("map_bbox", 0.0, batch_size=self.cfg.BATCH_SIZE, sync_dist=True)
+            preds = [dict(
+                boxes=torch.zeros((0, 4), dtype=torch.float).to(self.device),
+                labels=torch.zeros((0), dtype=torch.long).to(self.device),
+                # masks=instance.get("pred_masks").to(torch.uint8),
+                scores=torch.zeros((0), dtype=torch.float).to(self.device)
+            ) for _ in batch["instance"]]
         
+        # Metric
         self.log("val_loss", sum(loss.values()), batch_size=self.cfg.BATCH_SIZE, sync_dist=True)
+        self.valid_acc_bbx.update(preds, target)
         
-
+    def validation_epoch_end(self, outputs):
+        self.log_dict(self.valid_acc_bbx.compute(), sync_dist=True)
+        self.valid_acc_bbx.reset()
 
     # def predict_step(self, batch, batch_idx, dataloader_idx=0):
 
@@ -147,7 +150,7 @@ class Instance(pl.LightningModule):
                                               factor=0.1,
                                               min_lr=self.cfg.SOLVER.BASE_LR_INSTANCE*1e-4,
                                               verbose=True),
-            'monitor': 'map_bbox'
+            'monitor': 'map'
         }
 
     def optimizer_step(self, current_epoch, batch_nb, optimizer, optimizer_idx, closure, on_tpu=False, using_native_amp=False, using_lbfgs=False):

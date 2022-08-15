@@ -7,6 +7,7 @@ from pytorch_lightning.callbacks import (
     ModelCheckpoint
 )
 from pytorch_lightning.utilities.model_summary  import ModelSummary
+from pytorch_lightning import loggers as pl_loggers
 from detectron2.config import get_cfg
 from detectron2.utils.events import _CURRENT_STORAGE_STACK, EventStorage
 
@@ -57,8 +58,8 @@ def train(args):
     # logger.info(efficientps.print)
     ModelSummary(effps_instance, max_depth=-1)
     # Callbacks / Hooks
-    early_stopping = EarlyStopping('map_bbox', patience=30, mode='max')
-    checkpoint = ModelCheckpoint(monitor='map_bbox',
+    early_stopping = EarlyStopping('map', patience=30, mode='max')
+    checkpoint = ModelCheckpoint(monitor='map',
                                  mode='max',
                                  dirpath=cfg.CALLBACKS.CHECKPOINT_DIR,
                                  save_last=True,
