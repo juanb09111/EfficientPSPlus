@@ -86,7 +86,8 @@ SOLVER:
   BASE_LR: 0.00024547089156850307 # found will all samples, panoptic, min_lr=1e-4
   BASE_LR_SEMANTIC: 0.0013182567385564075 # found with all samples semantic segmentation only min_lr 1e-4
   # BASE_LR_INSTANCE: 0.00014454397707459272 # found with all samples instance segmentation only min_lr 1e-5
-  BASE_LR_INSTANCE: 0.0004897788193684463 # found with all samples instance segmentation only min_lr 1e-4
+  # BASE_LR_INSTANCE: 0.0004897788193684463 # found with all samples instance segmentation only min_lr 1e-4
+  BASE_LR_INSTANCE: 0.0002818382931264454 # found with 100 samples, min_lr 1e-4
   # BASE_LR: 0.9 # found with all samples
   # BASE_LR: 0.003 # found with all samples * 2
   # BASE_LR: 7.585775750291837e-08
@@ -124,7 +125,7 @@ NUM_GPUS: 4
 DATASET_TYPE: "vkitti2"
 VKITTI_DATASET:
   STUFF_CLASSES: 12
-  MAX_SAMPLES: null #Number of training samples, null for all 
+  MAX_SAMPLES: 120 #Number of training samples, null for all 
   SPLIT_DATASET: True
   SPLITS: [0.80, 0.15, 0.05]
   SHUFFLE: True
