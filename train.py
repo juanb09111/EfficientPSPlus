@@ -47,6 +47,8 @@ if __name__ == "__main__":
     parser.add_argument('--config', type=str, required=True, help="Config file from configs/")
 
     parser.add_argument('--fast_dev', action='store_true')
+
+    parser.add_argument('--tune', action='store_true')
   
     
     args = parser.parse_args()
@@ -63,6 +65,4 @@ if __name__ == "__main__":
     print("ip_adress is", args.ip_adress)
     os.environ['MASTER_PORT'] = '12355'
     os.environ['WORLD_SIZE'] = str(args.world_size)
-    # nprocs: number of process which is equal to args.ngpu here
     train_loop(args)
-    # mp.spawn(train_loop, nprocs=args.ngpus, args=(args,))

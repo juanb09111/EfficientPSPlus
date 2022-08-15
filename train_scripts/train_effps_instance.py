@@ -84,7 +84,9 @@ def train(args):
         accumulate_grad_batches=cfg.SOLVER.ACCUMULATE_GRAD
     )
     logger.addHandler(logging.StreamHandler())
-    # lr_finder = trainer.tuner.lr_find(effps_instance, train_loader, valid_loader, min_lr=1e-4, max_lr=0.1)
-    # print(lr_finder.suggestion())
-    # print(lr_finder.results)
-    trainer.fit(effps_instance, train_loader, val_dataloaders=valid_loader)
+
+    if args.tune:
+        lr_finder = trainer.tuner.lr_find(effps_instance, train_loader, valid_loader, min_lr=1e-4, max_lr=0.1)
+        print("LR found:", lr_finder.suggestion())
+    else:
+        trainer.fit(effps_instance, train_loader, val_dataloaders=valid_loader)
