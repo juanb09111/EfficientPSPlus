@@ -58,9 +58,9 @@ def train(args):
     # logger.info(efficientps.print)
     ModelSummary(effps_instance, max_depth=-1)
     # Callbacks / Hooks
-    early_stopping = EarlyStopping('map', patience=30, mode='max')
-    checkpoint = ModelCheckpoint(monitor='map',
-                                 mode='max',
+    early_stopping = EarlyStopping('train_loss_epoch', patience=30, mode='min')
+    checkpoint = ModelCheckpoint(monitor='train_loss_epoch',
+                                 mode='min',
                                  dirpath=cfg.CALLBACKS.CHECKPOINT_DIR,
                                  save_last=True,
                                  verbose=True,)
@@ -84,7 +84,6 @@ def train(args):
         accumulate_grad_batches=cfg.SOLVER.ACCUMULATE_GRAD
     )
     logger.addHandler(logging.StreamHandler())
-    # trainer.tune(effps_instance, train_loader, valid_loader)
     # lr_finder = trainer.tuner.lr_find(effps_instance, train_loader, valid_loader, min_lr=1e-4, max_lr=0.1)
     # print(lr_finder.suggestion())
     # print(lr_finder.results)

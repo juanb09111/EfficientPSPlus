@@ -49,7 +49,7 @@ class Instance(pl.LightningModule):
         
         # Add losses to logs
         [self.log(k, v, batch_size=self.cfg.BATCH_SIZE) for k,v in loss.items()]
-        self.log('train_loss', sum(loss.values()), batch_size=self.cfg.BATCH_SIZE)
+        self.log('train_loss', sum(loss.values()), batch_size=self.cfg.BATCH_SIZE, on_step=True, on_epoch=True, sync_dist=True)
         return {'loss': sum(loss.values())}
 
     def shared_step(self, inputs):
@@ -67,7 +67,7 @@ class Instance(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         
-        predictions, loss = self.shared_step(batch)
+        predictions, _ = self.shared_step(batch)
         
         target = [dict(
                 boxes=instance.get("gt_boxes").tensor,
@@ -94,7 +94,6 @@ class Instance(pl.LightningModule):
             ) for _ in batch["instance"]]
         
         # Metric
-        self.log("val_loss", sum(loss.values()), batch_size=self.cfg.BATCH_SIZE, sync_dist=True)
         self.valid_acc_bbx.update(preds, target)
         
     def validation_epoch_end(self, outputs):
@@ -145,12 +144,12 @@ class Instance(pl.LightningModule):
         return {
             'optimizer': self.optimizer,
             'lr_scheduler': ReduceLROnPlateau(self.optimizer,
-                                              mode='max',
+                                              mode='min',
                                               patience=10,
                                               factor=0.1,
                                               min_lr=self.cfg.SOLVER.BASE_LR_INSTANCE*1e-4,
                                               verbose=True),
-            'monitor': 'map'
+            'monitor': 'train_loss_epoch'
         }
 
     def optimizer_step(self, current_epoch, batch_nb, optimizer, optimizer_idx, closure, on_tpu=False, using_native_amp=False, using_lbfgs=False):
