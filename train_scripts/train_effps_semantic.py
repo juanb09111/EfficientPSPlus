@@ -67,12 +67,10 @@ def train(args):
     # Create a pytorch lighting trainer
     trainer = pl.Trainer(
         # weights_summary='full',
-        # auto_lr_find=True,
+        auto_lr_find=args.tune,
         log_every_n_steps=1276,
-        devices=list(range(torch.cuda.device_count())),
-        # gpus=args.ngpus
-        # distributed_backend='ddp',
-        strategy="ddp",
+        devices=1 if args.tune else list(range(torch.cuda.device_count())),
+        strategy=None if args.tune else "ddp",
         accelerator='gpu',
         num_sanity_val_steps=0,
         fast_dev_run=cfg.SOLVER.FAST_DEV_RUN if args.fast_dev else False,
