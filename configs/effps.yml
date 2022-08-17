@@ -87,7 +87,9 @@ SOLVER:
   BASE_LR_SEMANTIC: 0.0013182567385564075 # found with all samples semantic segmentation only min_lr 1e-4
   # BASE_LR_INSTANCE: 0.00014454397707459272 # found with all samples instance segmentation only min_lr 1e-5
   # BASE_LR_INSTANCE: 0.0004897788193684463 # found with all samples instance segmentation only min_lr 1e-4
-  BASE_LR_INSTANCE: 0.0002818382931264454 # found with 100 samples, min_lr 1e-4
+  # BASE_LR_INSTANCE: 0.0002818382931264454 # found with 100 samples, min_lr 1e-4
+  # BASE_LR_INSTANCE: 1.659586907437561e-05 # Found with 100 samples, min_lr 1e-5, 1000 steps
+  BASE_LR_INSTANCE: 2.0701413487910426e-05 #Found with 1200 sampels, min_lr 1e-5, 1000 steps
   # BASE_LR: 0.9 # found with all samples
   # BASE_LR: 0.003 # found with all samples * 2
   # BASE_LR: 7.585775750291837e-08
