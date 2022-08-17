@@ -7,6 +7,7 @@ from torchmetrics.detection.mean_ap import MeanAveragePrecision
 from .fpn import TwoWayFpn
 from .backbone import generate_backbone_EfficientPS, output_feature_size
 from .instance_head import InstanceHead
+from .instance_predictions import instance_predictions
 import os.path
 import numpy as np
 
@@ -48,8 +49,8 @@ class Instance(pl.LightningModule):
         _, loss = self.shared_step(batch)
         
         # Add losses to logs
-        [self.log(k, v, batch_size=self.cfg.BATCH_SIZE) for k,v in loss.items()]
-        self.log('train_loss', sum(loss.values()), batch_size=self.cfg.BATCH_SIZE, on_step=True, on_epoch=True, sync_dist=True)
+        [self.log(k, v, batch_size=self.cfg.BATCH_SIZE, on_step=False, on_epoch=True) for k,v in loss.items()]
+        self.log('train_loss', sum(loss.values()), batch_size=self.cfg.BATCH_SIZE, on_step=True, on_epoch=True)
         return {'loss': sum(loss.values())}
 
     def shared_step(self, inputs):
@@ -65,66 +66,61 @@ class Instance(pl.LightningModule):
         predictions.update({'instance': pred_instance, "loss": instance_losses})
         return predictions, loss
 
-    def validation_step(self, batch, batch_idx):
+    # def validation_step(self, batch, batch_idx):
         
-        predictions, _ = self.shared_step(batch)
+    #     predictions, _ = self.shared_step(batch)
         
-        target = [dict(
-                boxes=instance.get("gt_boxes").tensor,
-                labels=instance.get("gt_classes"),
-                masks=instance.get("gt_masks").tensor
-            ) for instance in batch["instance"]]
+    #     target = [dict(
+    #             boxes=instance.get("gt_boxes").tensor,
+    #             labels=instance.get("gt_classes"),
+    #             masks=instance.get("gt_masks").tensor
+    #         ) for instance in batch["instance"]]
         
-        if predictions["instance"] != None:       
+    #     if predictions["instance"] != None:       
 
-            #TODO: scale masks
-            preds = [dict(
-                boxes=instance.get("pred_boxes").tensor,
-                labels=instance.get("pred_classes"),
-                # masks=instance.get("pred_masks").to(torch.uint8),
-                scores=instance.get("scores")
-            ) for instance in predictions["instance"]]
+    #         #TODO: scale masks
+    #         preds = [dict(
+    #             boxes=instance.get("pred_boxes").tensor,
+    #             labels=instance.get("pred_classes"),
+    #             # masks=instance.get("pred_masks").to(torch.uint8),
+    #             scores=instance.get("scores")
+    #         ) for instance in predictions["instance"]]
             
-        else:
-            preds = [dict(
-                boxes=torch.zeros((0, 4), dtype=torch.float).to(self.device),
-                labels=torch.zeros((0), dtype=torch.long).to(self.device),
-                # masks=instance.get("pred_masks").to(torch.uint8),
-                scores=torch.zeros((0), dtype=torch.float).to(self.device)
-            ) for _ in batch["instance"]]
+    #     else:
+    #         preds = [dict(
+    #             boxes=torch.zeros((0, 4), dtype=torch.float).to(self.device),
+    #             labels=torch.zeros((0), dtype=torch.long).to(self.device),
+    #             # masks=instance.get("pred_masks").to(torch.uint8),
+    #             scores=torch.zeros((0), dtype=torch.float).to(self.device)
+    #         ) for _ in batch["instance"]]
         
-        # Metric
-        self.valid_acc_bbx.update(preds, target)
+    #     # Metric
+    #     self.valid_acc_bbx.update(preds, target)
         
-    def validation_epoch_end(self, outputs):
-        self.log_dict(self.valid_acc_bbx.compute(), sync_dist=True)
-        self.valid_acc_bbx.reset()
+    # def validation_epoch_end(self, outputs):
+    #     self.log_dict(self.valid_acc_bbx.compute(), sync_dist=True)
+    #     self.valid_acc_bbx.reset()
 
-    # def predict_step(self, batch, batch_idx, dataloader_idx=0):
+    def predict_step(self, batch, batch_idx, dataloader_idx=0):
 
-    #     predictions = dict()
-    #     # Feature extraction
-    #     features = self.backbone.extract_endpoints(batch['image'])
-    #     pyramid_features = self.fpn(features)
-    #     # Heads Predictions
-    #     output_size = batch["image"][0].shape[-2:]
-    #     semantic_logits, _ = self.semantic_head(pyramid_features, output_size)
+        # Feature extraction
+        features = self.backbone.extract_endpoints(batch['image'])
+        pyramid_features = self.fpn(features)
+        # Heads Predictions
+        pred_instance, _ = self.instance_head(pyramid_features)
 
-    #     predictions.update({'semantic': semantic_logits})
-    #     preds = F.softmax(predictions["semantic"], dim=1)
-    #     preds = F.argmax(preds, dim=1)
-
-    #     return {
-    #         'preds': preds,
-    #         'targets': batch["semantic"],
-    #         'image_id': batch['image_id']
-    #     }
+        return {
+            'preds': pred_instance,
+            'targets': batch["instance"],
+            'image_id': batch['image_id'],
+            'images': batch['image']
+        }
         
     
-    # def on_predict_epoch_end(self, results):
-    #     #Save Panoptic results
-    #     print("saving panoptic results")
-    #     semantic_predictions(self.cfg, results[0])
+    def on_predict_epoch_end(self, results):
+        #Save Panoptic results
+        print("saving instance results")
+        instance_predictions(self.cfg, results[0])
         
 
     def configure_optimizers(self):

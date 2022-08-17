@@ -1,4 +1,5 @@
 import torch
+import numpy as np 
 import os
 import logging
 import pytorch_lightning as pl
@@ -65,11 +66,14 @@ def train(args):
                                  save_last=True,
                                  verbose=True,)
 
+    #logger
+    tb_logger = pl_loggers.TensorBoardLogger("tb_logs", name="effps_instance")
     # Create a pytorch lighting trainer
     trainer = pl.Trainer(
         # weights_summary='full',
+        logger=tb_logger,
         auto_lr_find=args.tune,
-        log_every_n_steps=1276,
+        log_every_n_steps=np.floor(len(train_loader)/2),
         devices=1 if args.tune else list(range(torch.cuda.device_count())),
         strategy=None if args.tune else "ddp",
         accelerator='gpu',
@@ -84,7 +88,7 @@ def train(args):
     logger.addHandler(logging.StreamHandler())
 
     if args.tune:
-        lr_finder = trainer.tuner.lr_find(effps_instance, train_loader, valid_loader, min_lr=1e-4, max_lr=0.1)
+        lr_finder = trainer.tuner.lr_find(effps_instance, train_loader, valid_loader, min_lr=1e-5, max_lr=0.1, num_training=1000)
         print("LR found:", lr_finder.suggestion())
     else:
         trainer.fit(effps_instance, train_loader, val_dataloaders=valid_loader)

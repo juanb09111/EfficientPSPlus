@@ -5,14 +5,17 @@ import sys
 import torch.multiprocessing as mp
 from argparse import ArgumentParser
 from inference_scripts import inference_effps
+from inference_scripts import inference_effps_instance
 
 # # from ignite.contrib.handlers.param_scheduler import PiecewiseLinear
 
-MODELS = ["EfficientPS"]
+MODELS = ["EfficientPS", "EfficientPS_instance"]
 
 def get_inference_loop(model_name):
     if model_name == "EfficientPS":
         return inference_effps.inference
+    if model_name == "EfficientPS_instance":
+        return inference_effps_instance.inference
     
           
 
@@ -33,6 +36,8 @@ if __name__ == "__main__":
     parser.add_argument('--config', type=str, required=True, help="Config file from configs/")
     
     parser.add_argument('--fast_dev', action='store_true')
+
+    parser.add_argument('--tune', action='store_true')
     
     args = parser.parse_args()
 

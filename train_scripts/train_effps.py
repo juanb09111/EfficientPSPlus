@@ -1,4 +1,5 @@
 import torch
+import numpy as np
 import os
 import logging
 import pytorch_lightning as pl
@@ -71,7 +72,7 @@ def train(args):
     trainer = pl.Trainer(
         # weights_summary='full',
         auto_lr_find=args.tune,
-        log_every_n_steps=1276,
+        log_every_n_steps=np.floor(len(train_loader)/2),
         devices=1 if args.tune else list(range(torch.cuda.device_count())),
         strategy=None if args.tune else "ddp",
         accelerator='gpu',

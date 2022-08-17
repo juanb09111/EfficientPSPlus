@@ -68,6 +68,8 @@ def add_custom_params(cfg):
     cfg.VKITTI_DATASET.DATASET_PATH.PRED_DIR = "preds"
     cfg.VKITTI_DATASET.DATASET_PATH.PRED_JSON = "vkitti2_panoptic_predictions.json"
     cfg.VKITTI_DATASET.DATASET_PATH.PRED_DIR_SEMANTIC = "preds_semantic"
+    cfg.VKITTI_DATASET.DATASET_PATH.PRED_DIR_INSTANCE = "preds_instance"
+    cfg.VKITTI_DATASET.DATASET_PATH.PRED_JSON_INSTANCE = "vkitti2_instance_predictions.json"
     cfg.VKITTI_DATASET.DATASET_PATH.PRED_JSON_SEMANTIC = "vkitti2_semantic_predictions.json"
     
     cfg.VKITTI_DATASET.EXCLUDE = ["15-deg-left", "15-deg-right", "30-deg-left", "30-deg-right"]

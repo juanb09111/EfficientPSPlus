@@ -31,7 +31,7 @@ MODEL:
     IOU_THRESHOLDS: [0.5]
     # IOU_LABELS:
     SCORE_THRESH_TEST: 0.5 # First step of panoptic fusion module
-    NMS_THRESH_TEST: 0.5 # Second step of panoptic fusion module
+    NMS_THRESH_TEST: 0.2 # Second step of panoptic fusion module
   ROI_BOX_HEAD:
     POOLER_RESOLUTION: 7
     POOLER_SAMPLING_RATIO: 2 # (maybe put to 2) The `sampling_ratio` parameter for the ROIAlign op.
@@ -108,9 +108,10 @@ CALLBACKS:
 # CHECKPOINT_PATH: "logs/test/epoch=8-step=11483.ckpt" #Epoch 8 all samples PQ tracking
 # CHECKPOINT_PATH: "" #Epoch 8 all samples PQ tracking
 # CHECKPOINT_PATH: "logs/test/epoch=30-step=371.ckpt"
-# CHECKPOINT_PATH_INFERENCE: "logs/epoch=83-step=107183.ckpt"  SEMANTIC BEST 
-CHECKPOINT_PATH_TRAINING: ""
-CHECKPOINT_PATH_INFERENCE: ""
+# CHECKPOINT_PATH: "logs/epoch=117-step=5664.ckpt" #100 samples instance best
+# CHECKPOINT_PATH_INFERENCE: "logs/epoch=83-step=107183.ckpt" #all samples SEMANTIC BEST 
+CHECKPOINT_PATH_TRAINING: "logs/epoch=32-step=1584.ckpt"
+CHECKPOINT_PATH_INFERENCE: "logs/epoch=117-step=5664.ckpt"
 BATCH_SIZE: 2
 PRECISION: 32 # Bit precision for mix precision training
 NUM_CLASS: 15 # there are 15 classes in vkitti2 dataset including background
@@ -125,7 +126,7 @@ NUM_GPUS: 4
 DATASET_TYPE: "vkitti2"
 VKITTI_DATASET:
   STUFF_CLASSES: 12
-  MAX_SAMPLES: 120 #Number of training samples, null for all 
+  MAX_SAMPLES: 1200 #Number of training samples, null for all 
   SPLIT_DATASET: True
   SPLITS: [0.80, 0.15, 0.05]
   SHUFFLE: True
@@ -164,8 +165,10 @@ VKITTI_DATASET:
     VALID_PRED_DIR: "preds_valid"
     PRED_DIR: "preds"
     PRED_DIR_SEMANTIC: "preds_semantic"
+    PRED_DIR_INSTANCE: "preds_instance"
     PRED_JSON: "vkitti2_panoptic_predictions.json"
     PRED_JSON_SEMANTIC: "vkitti2_semantic_predictions.json"
+    PRED_JSON_INSTANCE: "vkitti2_instance_predictions.json"
   EXCLUDE: ["15-deg-left", "15-deg-right", "30-deg-left", "30-deg-right"]
 
 
