@@ -13,9 +13,9 @@ from detectron2.config import get_cfg
 from detectron2.utils.events import _CURRENT_STORAGE_STACK, EventStorage
 
 
-from efficientps import Semantic
+from efficientps import Semantic_Depth
 from utils.add_custom_params import add_custom_params
-from datasets.vkitti_dataset import get_dataloaders
+from datasets.vkitti_depth_dataset import get_dataloaders
 
 
 
@@ -32,7 +32,7 @@ def train(args):
     if not os.path.exists(cfg.CALLBACKS.CHECKPOINT_DIR):
         os.makedirs(cfg.CALLBACKS.CHECKPOINT_DIR)
     logger.addHandler(logging.FileHandler(
-        os.path.join(cfg.CALLBACKS.CHECKPOINT_DIR,"core_semantic.log"), mode='w'))
+        os.path.join(cfg.CALLBACKS.CHECKPOINT_DIR,"core_sem_depth.log"), mode='w'))
     # with open(args.config) as file:
     #     logger.info(file.read())
     # Initialise Custom storage to avoid error when using detectron 2
@@ -47,26 +47,27 @@ def train(args):
         print('""""""""""""""""""""""""""""""""""""""""""""""')
         print("Loading model from {}".format(cfg.CHECKPOINT_PATH_TRAINING))
         print('""""""""""""""""""""""""""""""""""""""""""""""')
-        efficientps = Semantic.load_from_checkpoint(cfg=cfg,
+        efficientps = Semantic_Depth.load_from_checkpoint(cfg=cfg,
             checkpoint_path=cfg.CHECKPOINT_PATH_TRAINING)
     else:
         print('""""""""""""""""""""""""""""""""""""""""""""""')
         print("Creating a new model")
         print('""""""""""""""""""""""""""""""""""""""""""""""')
-        efficientps = Semantic(cfg)
+        efficientps = Semantic_Depth(cfg)
         cfg.CHECKPOINT_PATH_TRAINING = None
 
     # logger.info(efficientps.print)
     ModelSummary(efficientps, max_depth=-1)
     # Callbacks / Hooks
-    early_stopping = EarlyStopping('IoU', patience=30, mode='max')
-    checkpoint = ModelCheckpoint(monitor='IoU',
-                                 mode='max',
+    early_stopping = EarlyStopping('loss_sum', patience=30, mode='min')
+    checkpoint = ModelCheckpoint(monitor='loss_sum',
+                                 mode='min',
                                  dirpath=cfg.CALLBACKS.CHECKPOINT_DIR,
                                  save_last=True,
                                  verbose=True,)
 
-    tb_logger = pl_loggers.TensorBoardLogger("tb_logs", name="effps_semantic")
+    #logger
+    tb_logger = pl_loggers.TensorBoardLogger("tb_logs", name="effps_sem_depth")
     # Create a pytorch lighting trainer
     trainer = pl.Trainer(
         # weights_summary='full',

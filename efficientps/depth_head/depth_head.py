@@ -3,6 +3,7 @@ from torch import nn
 import torch.nn.functional as F
 from efficientps.utils import DepthwiseSeparableConv as depth_wise_conv
 from efficientps.utils import ContinuousConvolution
+from inplace_abn import InPlaceABN
 
 
 
@@ -11,18 +12,18 @@ class Two_D_Branch(nn.Module):
         super(Two_D_Branch, self).__init__()
 
         self.conv1 = nn.Sequential(
-            depth_wise_conv(backbone_out_channels, backbone_out_channels, 3),
-            nn.BatchNorm2d(backbone_out_channels)
+            depth_wise_conv(backbone_out_channels, backbone_out_channels, 3, stride=2, padding=1),
+            InPlaceABN(backbone_out_channels)
         )
 
         self.conv2 = nn.Sequential(
-            depth_wise_conv(backbone_out_channels, backbone_out_channels, 3),
-            nn.BatchNorm2d(backbone_out_channels)
+            depth_wise_conv(backbone_out_channels, backbone_out_channels, 3, padding=1),
+            InPlaceABN(backbone_out_channels)
         )
 
         self.conv3 = nn.Sequential(
-            depth_wise_conv(backbone_out_channels, backbone_out_channels, 3),
-            nn.BatchNorm2d(backbone_out_channels)
+            depth_wise_conv(backbone_out_channels, backbone_out_channels, 3, padding=1),
+            InPlaceABN(backbone_out_channels)
         )
 
     def forward(self, features):
@@ -37,12 +38,12 @@ class Two_D_Branch(nn.Module):
 
 
 class Three_D_Branch(nn.Module):
-    def __init__(self, n_feat, k_number, n_number=None):
+    def __init__(self, n_feat, k_number, n_points=None):
         super(Three_D_Branch, self).__init__()
 
         self.branch_3d_continuous = nn.Sequential(
-            ContinuousConvolution(n_feat, k_number, n_number),
-            ContinuousConvolution(n_feat, k_number, n_number)
+            ContinuousConvolution(n_feat, k_number, n_points),
+            ContinuousConvolution(n_feat, k_number, n_points)
         )
 
     def forward(self, feats, mask, coors, indices):
@@ -67,19 +68,19 @@ class Three_D_Branch(nn.Module):
 
 
 class FuseBlock(nn.Module):
-    def __init__(self, nin, nout, k_number, n_number=None, extra_output_layer=False):
+    def __init__(self, nin, nout, k_number, n_points=None, extra_output_layer=False):
         super(FuseBlock, self).__init__()
 
         self.extra_output_layer = extra_output_layer
         self.branch_2d = Two_D_Branch(nin)
 
-        self.branch_3d = Three_D_Branch(nin, k_number, n_number)
+        self.branch_3d = Three_D_Branch(nin, k_number, n_points)
 
         self.output_layer = nn.Sequential(
             # depth_wise_conv(backbone_out_channels, kernel_size=3, stride=1, padding=1),
             # depth_wise_sep_conv(nin, nout, kernel_size=3, padding=1),
             nn.Conv2d(nin, nout, kernel_size=3, padding=1),
-            nn.BatchNorm2d(nout)
+            InPlaceABN(nout)
         )
 
     def forward(self, *inputs):
@@ -104,9 +105,8 @@ class FuseBlock(nn.Module):
 
 class DepthHead(nn.Module):
     def __init__(self, k_number,
-                 num_ins_classes,
-                 num_sem_classes,
-                 n_number=None):
+                 num_classes=0, #including background
+                 n_points=None):
 
         super(DepthHead, self).__init__()
 
@@ -118,62 +118,62 @@ class DepthHead(nn.Module):
         self.sparse_conv = nn.Sequential(
             nn.Conv2d(in_channels=1, out_channels=16,
                       kernel_size=3, stride=2, padding=1),
-            nn.BatchNorm2d(16),
+            InPlaceABN(16),
             nn.ReLU(),
             nn.Conv2d(in_channels=16, out_channels=16,
                       kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm2d(16),
+            InPlaceABN(16),
             nn.ReLU()
         )
-
+        in_ch = 4 + num_classes
         self.rgbd_conv = nn.Sequential(
-            nn.Conv2d(in_channels=4 + num_ins_classes + num_sem_classes + 1, out_channels=32,
+            nn.Conv2d(in_channels=in_ch, out_channels=32,
                       kernel_size=3, stride=2, padding=1),
-            nn.BatchNorm2d(32),
+            InPlaceABN(32),
             nn.ReLU(),
             nn.Conv2d(in_channels=32, out_channels=32,
                       kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm2d(32),
+            InPlaceABN(32),
             nn.ReLU()
         )
 
         self.fuse_conv = nn.Sequential(
-            FuseBlock(48, 64, k_number, n_number=n_number),
-            FuseBlock(64, 64, k_number, n_number=n_number,
+            FuseBlock(48, 64, k_number, n_points=n_points),
+            FuseBlock(64, 64, k_number, n_points=n_points,
                       extra_output_layer=True),
-            FuseBlock(64, 64, k_number, n_number=n_number,
+            FuseBlock(64, 64, k_number, n_points=n_points,
                       extra_output_layer=True),
-            FuseBlock(64, 64, k_number, n_number=n_number,
+            FuseBlock(64, 64, k_number, n_points=n_points,
                       extra_output_layer=True),
-            FuseBlock(64, 64, k_number, n_number=n_number,
+            FuseBlock(64, 64, k_number, n_points=n_points,
                       extra_output_layer=True),
-            FuseBlock(64, 64, k_number, n_number=n_number,
+            FuseBlock(64, 64, k_number, n_points=n_points,
                       extra_output_layer=True),
-            FuseBlock(64, 64, k_number, n_number=n_number,
+            FuseBlock(64, 64, k_number, n_points=n_points,
                       extra_output_layer=True),
-            FuseBlock(64, 64, k_number, n_number=n_number,
+            FuseBlock(64, 64, k_number, n_points=n_points,
                       extra_output_layer=True),
-            FuseBlock(64, 64, k_number, n_number=n_number,
+            FuseBlock(64, 64, k_number, n_points=n_points,
                       extra_output_layer=True),
-            FuseBlock(64, 64, k_number, n_number=n_number,
+            FuseBlock(64, 64, k_number, n_points=n_points,
                       extra_output_layer=True),
-            FuseBlock(64, 64, k_number, n_number=n_number,
+            FuseBlock(64, 64, k_number, n_points=n_points,
                       extra_output_layer=True),
-            FuseBlock(64, 64, k_number, n_number=n_number,
+            FuseBlock(64, 64, k_number, n_points=n_points,
                       extra_output_layer=True)
         )
 
         self.output_layer = nn.Sequential(
             nn.Conv2d(in_channels=64, out_channels=32,
                       kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm2d(32),
+            InPlaceABN(32),
             nn.ReLU(),
             nn.Conv2d(in_channels=32, out_channels=1,
                       kernel_size=3, stride=1, padding=1),
             nn.ReLU()
         )
 
-    def forward(self, img, sparse_depth, mask, coors, k_nn_indices, semantic_logits, sparse_depth_gt=None):
+    def forward(self, img, sparse_depth, mask, coors, k_nn_indices, semantic_logits=None, sparse_depth_gt=None):
         """
         inputs:
         img: input rgb (B x 3 x H x W)
@@ -194,7 +194,11 @@ class DepthHead(nn.Module):
         y_sparse = self.sparse_conv(sparse_depth)  # B x 16 x H/2 x W/2
 
         # rgbd branch
-        x_concat_d = torch.cat((img, sparse_depth, semantic_logits), dim=1)
+        if semantic_logits == None:
+            x_concat_d = torch.cat((img, sparse_depth), dim=1)
+        else:
+            x_concat_d = torch.cat((img, sparse_depth, semantic_logits), dim=1)
+
         y_rgbd = self.rgbd_conv(x_concat_d)  # B x 32 x H/2 x W/2
 
         y_rgbd_cat_y_sparse = torch.cat((y_rgbd, y_sparse), dim=1)
@@ -206,23 +210,23 @@ class DepthHead(nn.Module):
 
         fused_out = self.output_layer(fused)
 
-        out = torch.squeeze(fused_out, 1)
-
         if sparse_depth_gt is not None:
-            return out, self.loss(out, sparse_depth_gt)
+            return fused_out, self.loss(fused_out, sparse_depth_gt)
         else:
-            return out, {}
+            return fused_out, {}
 
 
     def loss(self, inputs, targets):
         
-        mask_pos = torch.tensor((1), dtype=torch.float64)
-        mask_neg = torch.tensor((0), dtype=torch.float64)
+        out = torch.squeeze(inputs, 1)
+
+        mask_pos = torch.tensor((1), dtype=torch.float64, device=targets.get_device())
+        mask_neg = torch.tensor((0), dtype=torch.float64, device=targets.get_device())
         mask_gt = torch.where(targets > 0, mask_pos, mask_neg)
         mask_gt = mask_gt.squeeze_(1)
         mask_gt.requires_grad_(True)
         targets = targets.squeeze_(1) 
 
-        depth_loss = F.mse_loss(inputs*mask_gt, targets*mask_gt)
+        depth_loss = F.mse_loss(out*mask_gt, targets*mask_gt)
 
-        return depth_loss
+        return {"depth_loss": depth_loss}

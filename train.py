@@ -8,6 +8,9 @@ from train_scripts import train_effps_plus
 from train_scripts import train_effps
 from train_scripts import train_effps_semantic
 from train_scripts import train_effps_instance
+from train_scripts import train_effps_depth
+from train_scripts import train_effps_sem_depth
+from train_scripts import train_effps_pan_depth
 
 # # from ignite.contrib.handlers.param_scheduler import PiecewiseLinear
 
@@ -15,7 +18,10 @@ from train_scripts import train_effps_instance
 MODELS = ["EfficientPS",
           "EfficientPS_Plus",
           "EfficientPS_semantic",
-          "EfficientPS_instance"]
+          "EfficientPS_instance",
+          "EfficientPS_depth",
+          "EfficientPS_sem_depth",
+          "EfficientPS_pan_depth"]
 
 def get_train_loop(model_name):
     if model_name == "EfficientPS_Plus":
@@ -26,6 +32,12 @@ def get_train_loop(model_name):
         return train_effps_semantic.train
     if model_name == "EfficientPS_instance":
         return train_effps_instance.train
+    if model_name == "EfficientPS_depth":
+        return train_effps_depth.train
+    if model_name == "EfficientPS_sem_depth":
+        return train_effps_sem_depth.train
+    if model_name == "EfficientPS_pan_depth":
+        return train_effps_pan_depth.train
 
     
           
@@ -38,9 +50,6 @@ if __name__ == "__main__":
                         help="Node's order number in [0, num_of_nodes-1]")
     parser.add_argument('--ip_adress', type=str, required=True,
                         help='ip address of the host node')
-
-    parser.add_argument('--ngpus', default=4, type=int,
-                        help='number of gpus per node')
 
     parser.add_argument('--model_name', type=str, required=True, help="Name of the model to train. Look up in models.py")
 
@@ -58,11 +67,8 @@ if __name__ == "__main__":
         raise ValueError("model_name must be one of: ", MODELS)
     train_loop = get_train_loop(args.model_name)
 
-    # Total number of gpus availabe to us.
-    args.world_size = args.ngpus * args.nodes
     # add the ip address to the environment variable so it can be easily avialbale
     os.environ['MASTER_ADDR'] = args.ip_adress
     print("ip_adress is", args.ip_adress)
     os.environ['MASTER_PORT'] = '12355'
-    os.environ['WORLD_SIZE'] = str(args.world_size)
     train_loop(args)

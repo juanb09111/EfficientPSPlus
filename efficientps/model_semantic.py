@@ -1,6 +1,6 @@
 import os
 import torch
-from torch.optim.lr_scheduler import ReduceLROnPlateau, StepLR
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 import torch.nn.functional as F
 import pytorch_lightning as pl
 from torchmetrics import JaccardIndex
@@ -10,7 +10,6 @@ from .semantic_head import SemanticHead
 # from .visualize_pred import visualize_pred
 from .semantic_predictions import semantic_predictions
 import os.path
-import numpy as np
 # import cv2
 # import matplotlib.pyplot as plt
 
@@ -51,8 +50,9 @@ class Semantic(pl.LightningModule):
         _, loss = self.shared_step(batch)
         
         # Add losses to logs
-        [self.log(k, v, batch_size=self.cfg.BATCH_SIZE) for k,v in loss.items()]
-        self.log('train_loss', sum(loss.values()), batch_size=self.cfg.BATCH_SIZE)
+        [self.log(k, v, batch_size=self.cfg.BATCH_SIZE, on_step=False, on_epoch=True, sync_dist=True) for k,v in loss.items()]
+        self.log('train_loss', sum(loss.values()), batch_size=self.cfg.BATCH_SIZE, on_step=True, on_epoch=False, sync_dist=False)
+        self.log('train_loss_epoch', sum(loss.values()), batch_size=self.cfg.BATCH_SIZE, on_step=False, on_epoch=True, sync_dist=True)
         return {'loss': sum(loss.values())}
 
     def shared_step(self, inputs):

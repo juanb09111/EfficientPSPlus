@@ -85,17 +85,23 @@ SOLVER:
   # BASE_LR: 0.003981071705534969 # found with 6k samples
   BASE_LR: 0.00024547089156850307 # found will all samples, panoptic, min_lr=1e-4
   BASE_LR_SEMANTIC: 0.0013182567385564075 # found with all samples semantic segmentation only min_lr 1e-4
+  # BASE_LR_SEMANTIC: 0.006025595860743576 # all samples, 200x1000, min_lr=1e-5
   # BASE_LR_INSTANCE: 0.00014454397707459272 # found with all samples instance segmentation only min_lr 1e-5
   # BASE_LR_INSTANCE: 0.0004897788193684463 # found with all samples instance segmentation only min_lr 1e-4
   # BASE_LR_INSTANCE: 0.0002818382931264454 # found with 100 samples, min_lr 1e-4
   # BASE_LR_INSTANCE: 1.659586907437561e-05 # Found with 100 samples, min_lr 1e-5, 1000 steps
   BASE_LR_INSTANCE: 2.0701413487910426e-05 #Found with 1200 sampels, min_lr 1e-5, 1000 steps
+  BASE_LR_DEPTH: 1.6749428760264375e-05
+  # BASE_LR_SEM_DEPTH: 1.2941958414499863e-05 # Best lr found with all samples, 200x1000
+  BASE_LR_SEM_DEPTH: 0.0016
+  # BASE_LR_PAN_DEPTH: 1.2941958414499863e-05
+  BASE_LR_PAN_DEPTH: 0.0003981071705534973 # no depth
   # BASE_LR: 0.9 # found with all samples
   # BASE_LR: 0.003 # found with all samples * 2
   # BASE_LR: 7.585775750291837e-08
   WEIGHT_DECAY: 0.1 # Only for SGD
   WARMUP_ITERS: 0 # Set to 0 for no warmup
-  ACCUMULATE_GRAD: 1 # Number of accumulated epochs for accumulated gradient
+  ACCUMULATE_GRAD: 2 # Number of accumulated epochs for accumulated gradient
   FAST_DEV_RUN: 2
 
 CALLBACKS:
@@ -112,8 +118,12 @@ CALLBACKS:
 # CHECKPOINT_PATH: "logs/test/epoch=30-step=371.ckpt"
 # CHECKPOINT_PATH: "logs/epoch=117-step=5664.ckpt" #100 samples instance best
 # CHECKPOINT_PATH_INFERENCE: "logs/epoch=83-step=107183.ckpt" #all samples SEMANTIC BEST 
-CHECKPOINT_PATH_TRAINING: "logs/epoch=32-step=1584.ckpt"
-CHECKPOINT_PATH_INFERENCE: "logs/epoch=117-step=5664.ckpt"
+
+# CHECKPOINT_PATH_TRAINING: "logs/epoch=32-step=1584.ckpt"
+# CHECKPOINT_PATH_INFERENCE: "logs/epoch=117-step=5664.ckpt"
+# CHECKPOINT_PATH_TRAINING: "logs/epoch=199-step=127600.ckpt" #best for pan
+CHECKPOINT_PATH_TRAINING: ""
+CHECKPOINT_PATH_INFERENCE: ""
 BATCH_SIZE: 2
 PRECISION: 32 # Bit precision for mix precision training
 NUM_CLASS: 15 # there are 15 classes in vkitti2 dataset including background
@@ -128,7 +138,7 @@ NUM_GPUS: 4
 DATASET_TYPE: "vkitti2"
 VKITTI_DATASET:
   STUFF_CLASSES: 12
-  MAX_SAMPLES: 1200 #Number of training samples, null for all 
+  MAX_SAMPLES: null #Number of training samples, null for all 
   SPLIT_DATASET: True
   SPLITS: [0.80, 0.15, 0.05]
   SHUFFLE: True
@@ -145,12 +155,17 @@ VKITTI_DATASET:
     HEIGHT: 375
     WIDTH: 1242
   CENTER_CROP:
-    HEIGHT: 360
-    WIDTH: 1200
+    # HEIGHT: 360
+    # WIDTH: 1200
+    HEIGHT: 200
+    WIDTH: 1000
   HFLIP: 0.5
   DEPTH:
     K: 3
-    SPARSITY: 0.05
+    SPARSITY_TRAINING: 0.05
+    SPARSITY_EVAL: 0.25
+    # MAX_DEPTH_POINTS: 20000 # Max val for HxW = 360x1200
+    MAX_DEPTH_POINTS: 8000 # Max val for HxW = 200x1000
     MAX_DEPTH: 50
   DATASET_PATH:
     ROOT: "datasets/vkitti2"
@@ -158,6 +173,8 @@ VKITTI_DATASET:
     SEMANTIC: "vkitti_2.0.3_classSegmentation"
     INSTANCE: "vkitti_2.0.3_instanceSegmentation"
     DEPTH: "vkitti_2.0.3_depth"
+    DEPTH_VIRTUAL_GT: "depth_virtual_gt"
+    DEPTH_PROJ: "depth_proj"
     COCO_ANNOTATION: "kitti_coco.json"
     COCO_PANOPTIC_SEGMENTATION: "kitti_coco_panoptic"
     TWO_CH_PANOPTIC_SEGMENTATION: "kitti_2ch_panoptic"

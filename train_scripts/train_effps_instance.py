@@ -25,7 +25,7 @@ def train(args):
     cfg = get_cfg()
     add_custom_params(cfg)
     cfg.merge_from_file(args.config)
-    cfg.NUM_GPUS = args.ngpus
+    cfg.NUM_GPUS = torch.cuda.device_count()
     
     logging.getLogger("pytorch_lightning").setLevel(logging.INFO)
     logger = logging.getLogger("pytorch_lightning.core")

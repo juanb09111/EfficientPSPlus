@@ -5,7 +5,8 @@ import logging
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import (
     EarlyStopping,
-    ModelCheckpoint
+    ModelCheckpoint,
+    LearningRateMonitor
 )
 from pytorch_lightning.utilities.model_summary  import ModelSummary
 from pytorch_lightning import loggers as pl_loggers
@@ -13,9 +14,9 @@ from detectron2.config import get_cfg
 from detectron2.utils.events import _CURRENT_STORAGE_STACK, EventStorage
 
 
-from efficientps import Semantic
+from efficientps import Pan_Depth
 from utils.add_custom_params import add_custom_params
-from datasets.vkitti_dataset import get_dataloaders
+from datasets.vkitti_depth_dataset import get_dataloaders
 
 
 
@@ -32,9 +33,9 @@ def train(args):
     if not os.path.exists(cfg.CALLBACKS.CHECKPOINT_DIR):
         os.makedirs(cfg.CALLBACKS.CHECKPOINT_DIR)
     logger.addHandler(logging.FileHandler(
-        os.path.join(cfg.CALLBACKS.CHECKPOINT_DIR,"core_semantic.log"), mode='w'))
-    # with open(args.config) as file:
-    #     logger.info(file.read())
+        os.path.join(cfg.CALLBACKS.CHECKPOINT_DIR,"core_pan_depth.log"), mode='w'))
+    with open(args.config) as file:
+        logger.info(file.read())
     # Initialise Custom storage to avoid error when using detectron 2
     _CURRENT_STORAGE_STACK.append(EventStorage())
 
@@ -47,13 +48,13 @@ def train(args):
         print('""""""""""""""""""""""""""""""""""""""""""""""')
         print("Loading model from {}".format(cfg.CHECKPOINT_PATH_TRAINING))
         print('""""""""""""""""""""""""""""""""""""""""""""""')
-        efficientps = Semantic.load_from_checkpoint(cfg=cfg,
+        efficientps = Pan_Depth.load_from_checkpoint(cfg=cfg,
             checkpoint_path=cfg.CHECKPOINT_PATH_TRAINING)
     else:
         print('""""""""""""""""""""""""""""""""""""""""""""""')
         print("Creating a new model")
         print('""""""""""""""""""""""""""""""""""""""""""""""')
-        efficientps = Semantic(cfg)
+        efficientps = Pan_Depth(cfg)
         cfg.CHECKPOINT_PATH_TRAINING = None
 
     # logger.info(efficientps.print)
@@ -64,9 +65,12 @@ def train(args):
                                  mode='max',
                                  dirpath=cfg.CALLBACKS.CHECKPOINT_DIR,
                                  save_last=True,
-                                 verbose=True,)
+                                 verbose=True)
 
-    tb_logger = pl_loggers.TensorBoardLogger("tb_logs", name="effps_semantic")
+    lr_monitor = LearningRateMonitor(logging_interval='epoch')
+
+    #logger
+    tb_logger = pl_loggers.TensorBoardLogger("tb_logs_2", name="effps_pan_depth")
     # Create a pytorch lighting trainer
     trainer = pl.Trainer(
         # weights_summary='full',
@@ -78,7 +82,7 @@ def train(args):
         accelerator='gpu',
         num_sanity_val_steps=0,
         fast_dev_run=cfg.SOLVER.FAST_DEV_RUN if args.fast_dev else False,
-        callbacks=[early_stopping, checkpoint],
+        callbacks=[early_stopping, checkpoint, lr_monitor],
         # precision=cfg.PRECISION,
         resume_from_checkpoint=cfg.CHECKPOINT_PATH_TRAINING,
         # gradient_clip_val=0,
@@ -86,7 +90,7 @@ def train(args):
     )
     logger.addHandler(logging.StreamHandler())
     if args.tune:
-        lr_finder = trainer.tuner.lr_find(efficientps, train_loader, valid_loader, min_lr=1e-5, max_lr=0.1, num_training=1000)
+        lr_finder = trainer.tuner.lr_find(efficientps, train_loader, valid_loader, min_lr=1e-4, max_lr=0.1, num_training=100)
         print("LR found:", lr_finder.suggestion())
     else:
         trainer.fit(efficientps, train_loader, val_dataloaders=valid_loader)
