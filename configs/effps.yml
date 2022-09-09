@@ -95,7 +95,8 @@ SOLVER:
   # BASE_LR_SEM_DEPTH: 1.2941958414499863e-05 # Best lr found with all samples, 200x1000
   BASE_LR_SEM_DEPTH: 0.0016
   # BASE_LR_PAN_DEPTH: 1.2941958414499863e-05
-  BASE_LR_PAN_DEPTH: 0.0003981071705534973 # no depth
+  # BASE_LR_PAN_DEPTH: 0.0003981071705534973 # no depth
+  BASE_LR_PAN_DEPTH: 0.0006918309709189366 # depth only
   # BASE_LR: 0.9 # found with all samples
   # BASE_LR: 0.003 # found with all samples * 2
   # BASE_LR: 7.585775750291837e-08
@@ -122,7 +123,8 @@ CALLBACKS:
 # CHECKPOINT_PATH_TRAINING: "logs/epoch=32-step=1584.ckpt"
 # CHECKPOINT_PATH_INFERENCE: "logs/epoch=117-step=5664.ckpt"
 # CHECKPOINT_PATH_TRAINING: "logs/epoch=199-step=127600.ckpt" #best for pan
-CHECKPOINT_PATH_TRAINING: ""
+CHECKPOINT_PATH_TRAINING: "logs/epoch=39-step=25520.ckpt" # epoch 39, no depth
+# CHECKPOINT_PATH_TRAINING: ""
 CHECKPOINT_PATH_INFERENCE: ""
 BATCH_SIZE: 2
 PRECISION: 32 # Bit precision for mix precision training

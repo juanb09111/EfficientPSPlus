@@ -58,6 +58,7 @@ class Pan_Depth(pl.LightningModule):
         _, loss = self.shared_step(batch)
         
         # Add losses to logs
+        [self.log("{}_step".format(k), v, batch_size=self.cfg.BATCH_SIZE, on_step=True, on_epoch=False, sync_dist=False) for k,v in loss.items()]
         [self.log(k, v, batch_size=self.cfg.BATCH_SIZE, on_step=False, on_epoch=True, sync_dist=True) for k,v in loss.items()]
         self.log('train_loss', sum(loss.values()), batch_size=self.cfg.BATCH_SIZE, on_step=True, on_epoch=False, sync_dist=False)
         self.log('train_loss_epoch', sum(loss.values()), batch_size=self.cfg.BATCH_SIZE, on_step=False, on_epoch=True, sync_dist=True)
@@ -86,56 +87,56 @@ class Pan_Depth(pl.LightningModule):
         pred_instance, instance_losses = self.instance_head(pyramid_features, inputs)
 
         # Depth Predictions
-        # depth, depth_loss = self.depth_head(img,
-        #     sparse_depth, 
-        #     mask, 
-        #     coors, 
-        #     k_nn_indices,
-        #     semantic_logits=semantic_logits, 
-        #     sparse_depth_gt=sparse_depth_gt)
+        depth, depth_loss = self.depth_head(img,
+            sparse_depth, 
+            mask, 
+            coors, 
+            k_nn_indices,
+            semantic_logits=semantic_logits, 
+            sparse_depth_gt=sparse_depth_gt)
 
-        #Refine Head
+        # Refine Head
         refined_logits, refine_loss = self.refine_head(
             semantic_logits, 
-            # depth,
-            depth_full, 
+            depth,
+            # depth_full, 
             output_size, 
             semantic_gt=semantic_gt)
         
         # Output set up
-        # loss.update(depth_loss)
-        loss.update(semantic_loss)
-        loss.update(refine_loss)
-        loss.update(instance_losses)
+        loss.update(depth_loss)
+        # loss.update(semantic_loss)
+        # loss.update(refine_loss)
+        # loss.update(instance_losses)
         # loss.update({"loss_sum": depth_loss["depth_loss"] + refine_loss["refine_loss"]})
 
-        # predictions.update({'depth': depth})
+        predictions.update({'depth': depth})
         predictions.update({'semantic': refined_logits})
         predictions.update({'instance': pred_instance})
         return predictions, loss
 
     def validation_step(self, batch, batch_idx):
         
-        #depth
-        # sparse_depth_gt = batch['sparse_depth_gt']
+        # depth
+        sparse_depth_gt = batch['sparse_depth_gt']
 
-        # mask_pos = torch.tensor((1), dtype=torch.float64, device=self.device)
-        # mask_neg = torch.tensor((0), dtype=torch.float64, device=self.device)
-        # mask_gt = torch.where(sparse_depth_gt > 0, mask_pos, mask_neg)
-        # mask_gt = mask_gt.squeeze_(1)
+        mask_pos = torch.tensor((1), dtype=torch.float64, device=self.device)
+        mask_neg = torch.tensor((0), dtype=torch.float64, device=self.device)
+        mask_gt = torch.where(sparse_depth_gt > 0, mask_pos, mask_neg)
+        mask_gt = mask_gt.squeeze_(1)
         
         predictions, _ = self.shared_step(batch)
 
-        # pred_depth = torch.squeeze(predictions["depth"], 1)*mask_gt
+        pred_depth = torch.squeeze(predictions["depth"], 1)*mask_gt
 
         #semantic
         pred_semantic = F.softmax(predictions["semantic"], dim=1)
 
         # Metrics
         self.valid_acc_sem(pred_semantic, batch["semantic"])
-        # self.valid_acc_depth(pred_depth, sparse_depth_gt.squeeze_(1)*mask_gt)
+        self.valid_acc_depth(pred_depth, sparse_depth_gt.squeeze_(1)*mask_gt)
         self.log('IoU', self.valid_acc_sem, on_step=False, on_epoch=True, sync_dist=True)
-        # self.log('RMSE', self.valid_acc_depth, on_step=False, on_epoch=True, sync_dist=True)
+        self.log('RMSE', self.valid_acc_depth, on_step=False, on_epoch=True, sync_dist=True)
 
         # # Instance
 
@@ -176,7 +177,7 @@ class Pan_Depth(pl.LightningModule):
         
 
     def configure_optimizers(self):
-        print("Optimizer - using {} with lr {}".format(self.cfg.SOLVER.NAME, self.cfg.SOLVER.BASE_LR_PAN_DEPTH))
+        print("Optimizer - using {} with lr {}".format(self.cfg.SOLVER.NAME, self.learning_rate))
         if self.cfg.SOLVER.NAME == "Adam":
             self.optimizer = torch.optim.Adam(self.parameters(),
                                          lr=self.learning_rate,

@@ -49,7 +49,7 @@ def train(args):
         print("Loading model from {}".format(cfg.CHECKPOINT_PATH_TRAINING))
         print('""""""""""""""""""""""""""""""""""""""""""""""')
         efficientps = Pan_Depth.load_from_checkpoint(cfg=cfg,
-            checkpoint_path=cfg.CHECKPOINT_PATH_TRAINING)
+            checkpoint_path=cfg.CHECKPOINT_PATH_TRAINING, learning_rate=cfg.SOLVER.BASE_LR_PAN_DEPTH)
     else:
         print('""""""""""""""""""""""""""""""""""""""""""""""')
         print("Creating a new model")
@@ -70,7 +70,7 @@ def train(args):
     lr_monitor = LearningRateMonitor(logging_interval='epoch')
 
     #logger
-    tb_logger = pl_loggers.TensorBoardLogger("tb_logs_2", name="effps_pan_depth")
+    tb_logger = pl_loggers.TensorBoardLogger("tb_logs_2", name="effps_pan_depth_depth_only")
     # Create a pytorch lighting trainer
     trainer = pl.Trainer(
         # weights_summary='full',
