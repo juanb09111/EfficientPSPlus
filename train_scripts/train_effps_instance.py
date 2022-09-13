@@ -17,7 +17,7 @@ from detectron2.utils.events import _CURRENT_STORAGE_STACK, EventStorage
 from efficientps import Instance
 from utils.add_custom_params import add_custom_params
 from datasets.vkitti_dataset import get_dataloaders
-
+from datasets.vkitti_cats import obj_categories
 
 
 def train(args):
@@ -39,9 +39,10 @@ def train(args):
     # Initialise Custom storage to avoid error when using detectron 2
     _CURRENT_STORAGE_STACK.append(EventStorage())
 
-    #Get dataloaders
+    #Get dataloaders and obj_categories
     if cfg.DATASET_TYPE == "vkitti2":
         train_loader, valid_loader, _ = get_dataloaders(cfg)
+        categories = obj_categories
 
     # Create model or load a checkpoint
     if os.path.exists(cfg.CHECKPOINT_PATH_TRAINING):
@@ -49,20 +50,20 @@ def train(args):
         print("Loading model from {}".format(cfg.CHECKPOINT_PATH_TRAINING))
         print('""""""""""""""""""""""""""""""""""""""""""""""')
         effps_instance = Instance.load_from_checkpoint(cfg=cfg,
-            checkpoint_path=cfg.CHECKPOINT_PATH_TRAINING)
+            checkpoint_path=cfg.CHECKPOINT_PATH_TRAINING, categories=categories)
     else:
         print('""""""""""""""""""""""""""""""""""""""""""""""')
         print("Creating a new model")
         print('""""""""""""""""""""""""""""""""""""""""""""""')
-        effps_instance = Instance(cfg)
+        effps_instance = Instance(cfg, categories=categories)
         cfg.CHECKPOINT_PATH_TRAINING = None
 
     # logger.info(efficientps.print)
     ModelSummary(effps_instance, max_depth=-1)
     # Callbacks / Hooks
-    early_stopping = EarlyStopping('train_loss_epoch', patience=30, mode='min')
-    checkpoint = ModelCheckpoint(monitor='train_loss_epoch',
-                                 mode='min',
+    early_stopping = EarlyStopping('val_map', patience=30, mode='max')
+    checkpoint = ModelCheckpoint(monitor='val_map',
+                                 mode='max',
                                  dirpath=cfg.CALLBACKS.CHECKPOINT_DIR,
                                  save_last=True,
                                  verbose=True)
@@ -70,13 +71,13 @@ def train(args):
     lr_monitor = LearningRateMonitor(logging_interval='epoch')
 
     #logger
-    tb_logger = pl_loggers.TensorBoardLogger("tb_logs", name="effps_instance")
+    tb_logger = pl_loggers.TensorBoardLogger("tb_logs_2", name="effps_instance_lr_0.00021")
     # Create a pytorch lighting trainer
     trainer = pl.Trainer(
         # weights_summary='full',
         logger=tb_logger,
         auto_lr_find=args.tune,
-        log_every_n_steps=np.floor(len(train_loader)/2),
+        log_every_n_steps=np.floor(len(train_loader)/(cfg.BATCH_SIZE*torch.cuda.device_count())) -1,
         devices=1 if args.tune else list(range(torch.cuda.device_count())),
         strategy=None if args.tune else "ddp",
         accelerator='gpu',
@@ -91,7 +92,7 @@ def train(args):
     logger.addHandler(logging.StreamHandler())
 
     if args.tune:
-        lr_finder = trainer.tuner.lr_find(effps_instance, train_loader, valid_loader, min_lr=1e-5, max_lr=0.1, num_training=1000)
+        lr_finder = trainer.tuner.lr_find(effps_instance, train_loader, valid_loader, min_lr=1e-4, max_lr=0.1, num_training=100)
         print("LR found:", lr_finder.suggestion())
     else:
         trainer.fit(effps_instance, train_loader, val_dataloaders=valid_loader)

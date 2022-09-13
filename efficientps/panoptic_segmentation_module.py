@@ -142,7 +142,7 @@ def scale_resize_pad_masks(instance):
         canva = torch.zeros(instance.image_size)
         canva[int(box[1]):int(box[3]), int(box[0]):int(box[2])] = mask
         resized_masks.append(canva)
-    return resized_masks
+    return torch.stack(resized_masks)
 
 def scale_resize_pad(instance):
     """

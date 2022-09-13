@@ -8,6 +8,7 @@ from .fpn import TwoWayFpn
 from .backbone import generate_backbone_EfficientPS, output_feature_size
 from .instance_head import InstanceHead
 from .instance_predictions import instance_predictions
+from .panoptic_segmentation_module import scale_resize_pad_masks
 import os.path
 import numpy as np
 
@@ -17,7 +18,7 @@ class Instance(pl.LightningModule):
     Here pytorch lightningis used https://pytorch-lightning.readthedocs.io/en/latest/
     """
 
-    def __init__(self, cfg):
+    def __init__(self, cfg, categories):
         """
         Args:
         - cfg (Config) : Config object from detectron2
@@ -30,7 +31,8 @@ class Instance(pl.LightningModule):
         self.fpn = TwoWayFpn(
             output_feature_size[cfg.MODEL_CUSTOM.BACKBONE.EFFICIENTNET_ID])
         self.instance_head = InstanceHead(cfg)
-        self.valid_acc_bbx = MeanAveragePrecision()
+        self.valid_acc_bbx = MeanAveragePrecision(class_metrics=True)
+        self.obj_categories=categories
         # self.valid_acc_sgm = MeanAveragePrecision(iou_type="segm")
         
         # self.epoch = 0
@@ -49,7 +51,8 @@ class Instance(pl.LightningModule):
         _, loss = self.shared_step(batch)
         
         # Add losses to logs
-        [self.log(k, v, batch_size=self.cfg.BATCH_SIZE, on_step=False, on_epoch=True) for k,v in loss.items()]
+        [self.log("{}_step".format(k), v, batch_size=self.cfg.BATCH_SIZE, on_step=True, on_epoch=False, sync_dist=False) for k,v in loss.items()]
+        [self.log(k, v, batch_size=self.cfg.BATCH_SIZE, on_step=False, on_epoch=True, sync_dist=True) for k,v in loss.items()]
         self.log('train_loss', sum(loss.values()), batch_size=self.cfg.BATCH_SIZE, on_step=True, on_epoch=True)
         return {'loss': sum(loss.values())}
 
@@ -66,37 +69,61 @@ class Instance(pl.LightningModule):
         predictions.update({'instance': pred_instance, "loss": instance_losses})
         return predictions, loss
 
-    # def validation_step(self, batch, batch_idx):
+    def validation_step(self, batch, batch_idx):
         
-    #     predictions, _ = self.shared_step(batch)
+        predictions, _ = self.shared_step(batch)
         
-    #     target = [dict(
-    #             boxes=instance.get("gt_boxes").tensor,
-    #             labels=instance.get("gt_classes"),
-    #             masks=instance.get("gt_masks").tensor
-    #         ) for instance in batch["instance"]]
+        target = [dict(
+                boxes=instance.get("gt_boxes").tensor,
+                labels=instance.get("gt_classes"),
+                masks=instance.get("gt_masks").tensor
+            ) for instance in batch["instance"]]
         
-    #     if predictions["instance"] != None:       
+        if predictions["instance"] != None:       
 
-    #         #TODO: scale masks
-    #         preds = [dict(
-    #             boxes=instance.get("pred_boxes").tensor,
-    #             labels=instance.get("pred_classes"),
-    #             # masks=instance.get("pred_masks").to(torch.uint8),
-    #             scores=instance.get("scores")
-    #         ) for instance in predictions["instance"]]
+            preds = [dict(
+                boxes=instance.get("pred_boxes").tensor,
+                labels=instance.get("pred_classes"),
+                masks=scale_resize_pad_masks(instance).to(torch.uint8),
+                scores=instance.get("scores")
+            ) for instance in predictions["instance"]]
             
-    #     else:
-    #         preds = [dict(
-    #             boxes=torch.zeros((0, 4), dtype=torch.float).to(self.device),
-    #             labels=torch.zeros((0), dtype=torch.long).to(self.device),
-    #             # masks=instance.get("pred_masks").to(torch.uint8),
-    #             scores=torch.zeros((0), dtype=torch.float).to(self.device)
-    #         ) for _ in batch["instance"]]
+        else:
+            preds = [dict(
+                boxes=torch.zeros((0, 4), dtype=torch.float).to(self.device),
+                labels=torch.zeros((0), dtype=torch.long).to(self.device),
+                masks=torch.zeros((0), dtype=torch.uint8).to(self.device),
+                scores=torch.zeros((0), dtype=torch.float).to(self.device)
+            ) for _ in batch["instance"]]
         
-    #     # Metric
-    #     self.valid_acc_bbx.update(preds, target)
+        # Metric
+        # self.valid_acc_bbx(preds, target)
+        # self.log_dict(self.valid_acc_bbx, on_step=False, on_epoch=True, sync_dist=True)
+        self.valid_acc_bbx.update(preds, target)
+    
+    def validation_epoch_end(self, validation_step_outputs):
         
+        mAPs = {"val_" + k: v for k, v in self.valid_acc_bbx.compute().items()}
+        self.print(mAPs)
+        mAPs_per_class = mAPs.pop("val_map_per_class")
+        mARs_per_class = mAPs.pop("val_mar_100_per_class")
+        self.log_dict(mAPs, sync_dist=True)
+        self.log_dict(
+            {
+                f"val_map_{label}": value
+                for label, value in zip(self.obj_categories.values(), mAPs_per_class)
+            },
+            sync_dist=True,
+        )
+        self.log_dict(
+            {
+                f"val_mar_100_{label}": value
+                for label, value in zip(self.obj_categories.values(), mARs_per_class)
+            },
+            sync_dist=True,
+        )
+        self.valid_acc_bbx.reset()
+
     # def validation_epoch_end(self, outputs):
     #     self.log_dict(self.valid_acc_bbx.compute(), sync_dist=True)
     #     self.valid_acc_bbx.reset()
@@ -124,7 +151,7 @@ class Instance(pl.LightningModule):
         
 
     def configure_optimizers(self):
-        print("Optimizer - using {} with lr {}".format(self.cfg.SOLVER.NAME, self.cfg.SOLVER.BASE_LR_INSTANCE))
+        print("Optimizer - using {} with lr {}".format(self.cfg.SOLVER.NAME, self.learning_rate))
         if self.cfg.SOLVER.NAME == "Adam":
             self.optimizer = torch.optim.Adam(self.parameters(),
                                          lr=self.learning_rate,
@@ -140,12 +167,12 @@ class Instance(pl.LightningModule):
         return {
             'optimizer': self.optimizer,
             'lr_scheduler': ReduceLROnPlateau(self.optimizer,
-                                              mode='min',
+                                              mode='max',
                                               patience=10,
                                               factor=0.1,
                                               min_lr=self.cfg.SOLVER.BASE_LR_INSTANCE*1e-4,
                                               verbose=True),
-            'monitor': 'train_loss_epoch'
+            'monitor': 'val_map'
         }
 
     def optimizer_step(self, current_epoch, batch_nb, optimizer, optimizer_idx, closure, on_tpu=False, using_native_amp=False, using_lbfgs=False):

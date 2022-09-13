@@ -102,3 +102,5 @@ categories = [{
     "name": "Undefined",
     "supercategory": "background"
 }]
+
+obj_categories={1:"Truck", 2:"Car", 3:"Van"}

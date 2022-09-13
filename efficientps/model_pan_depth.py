@@ -17,15 +17,18 @@ class Pan_Depth(pl.LightningModule):
     Here pytorch lightningis used https://pytorch-lightning.readthedocs.io/en/latest/
     """
 
-    def __init__(self, cfg):
+    def __init__(self, cfg, lr=None):
         """
         Args:
         - cfg (Config) : Config object from detectron2
         """
         super().__init__()
         self.save_hyperparameters()
-        self.learning_rate = cfg.SOLVER.BASE_LR_PAN_DEPTH
         self.cfg = cfg
+        if lr is None:
+            self.learning_rate = cfg.SOLVER.BASE_LR_PAN_DEPTH
+        else:
+            self.learning_rate = lr
 
         self.backbone = generate_backbone_EfficientPS(cfg)
         self.fpn = TwoWayFpn(
@@ -44,6 +47,10 @@ class Pan_Depth(pl.LightningModule):
         self.valid_acc_sem = JaccardIndex(cfg.NUM_CLASS)
         self.valid_acc_bbx = MeanAveragePrecision()
     
+
+    def on_load_checkpoint(self, checkpoint):
+        checkpoint.pop("optimizer_states")
+        
     def on_train_start(self):
         self.logger.log_hyperparams(self.hparams)
 
@@ -193,12 +200,12 @@ class Pan_Depth(pl.LightningModule):
         return {
             'optimizer': self.optimizer,
             'lr_scheduler': ReduceLROnPlateau(self.optimizer,
-                                              mode='max',
+                                              mode='min',
                                               patience=10,
                                               factor=0.1,
                                               min_lr=self.cfg.SOLVER.BASE_LR_PAN_DEPTH*1e-4,
                                               verbose=True),
-            'monitor': 'IoU'
+            'monitor': 'RMSE'
         }
 
     def optimizer_step(self, current_epoch, batch_nb, optimizer, optimizer_idx, closure, on_tpu=False, using_native_amp=False, using_lbfgs=False):
@@ -207,7 +214,7 @@ class Pan_Depth(pl.LightningModule):
             lr_scale = min(1., float(self.trainer.global_step + 1) /
                                     float(self.cfg.SOLVER.WARMUP_ITERS))
             for pg in optimizer.param_groups:
-                pg['lr'] = lr_scale * self.cfg.SOLVER.BASE_LR_PAN_DEPTH
+                pg['lr'] = lr_scale * self.learning_rate
 
         # update params
         optimizer.step(closure=closure)

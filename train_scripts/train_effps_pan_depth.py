@@ -49,7 +49,7 @@ def train(args):
         print("Loading model from {}".format(cfg.CHECKPOINT_PATH_TRAINING))
         print('""""""""""""""""""""""""""""""""""""""""""""""')
         efficientps = Pan_Depth.load_from_checkpoint(cfg=cfg,
-            checkpoint_path=cfg.CHECKPOINT_PATH_TRAINING, learning_rate=cfg.SOLVER.BASE_LR_PAN_DEPTH)
+            checkpoint_path=cfg.CHECKPOINT_PATH_TRAINING, lr=cfg.SOLVER.BASE_LR_PAN_DEPTH)
     else:
         print('""""""""""""""""""""""""""""""""""""""""""""""')
         print("Creating a new model")
@@ -57,12 +57,14 @@ def train(args):
         efficientps = Pan_Depth(cfg)
         cfg.CHECKPOINT_PATH_TRAINING = None
 
+    #print lr
+    print("lr: ", efficientps.learning_rate)
     # logger.info(efficientps.print)
     ModelSummary(efficientps, max_depth=-1)
     # Callbacks / Hooks
-    early_stopping = EarlyStopping('IoU', patience=30, mode='max')
-    checkpoint = ModelCheckpoint(monitor='IoU',
-                                 mode='max',
+    early_stopping = EarlyStopping('RMSE', patience=30, mode='min')
+    checkpoint = ModelCheckpoint(monitor='RMSE',
+                                 mode='min',
                                  dirpath=cfg.CALLBACKS.CHECKPOINT_DIR,
                                  save_last=True,
                                  verbose=True)
@@ -70,13 +72,13 @@ def train(args):
     lr_monitor = LearningRateMonitor(logging_interval='epoch')
 
     #logger
-    tb_logger = pl_loggers.TensorBoardLogger("tb_logs_2", name="effps_pan_depth_depth_only")
+    tb_logger = pl_loggers.TensorBoardLogger("tb_logs_2", name="effps_pan_depth_depth_only_2")
     # Create a pytorch lighting trainer
     trainer = pl.Trainer(
         # weights_summary='full',
         logger=tb_logger,
         auto_lr_find=args.tune,
-        log_every_n_steps=np.floor(len(train_loader)/2),
+        log_every_n_steps=np.floor(len(train_loader)/(cfg.BATCH_SIZE*torch.cuda.device_count())) -1,
         devices=1 if args.tune else list(range(torch.cuda.device_count())),
         strategy=None if args.tune else "ddp",
         accelerator='gpu',
