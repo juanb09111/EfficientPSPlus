@@ -23,8 +23,8 @@ MODEL:
     IOU_THRESHOLDS: [0.3, 0.7]
   ROI_HEADS:
     NAME: "CustomROIHeads"
-    # BATCH_SIZE_PER_IMAGE: 256 # number of proposals to sample for training
-    # POSITIVE_FRACTION: 0.25 # fraction of positive (foreground) proposals to sample for training.
+    BATCH_SIZE_PER_IMAGE: 256 # number of proposals to sample for training
+    POSITIVE_FRACTION: 0.5 # fraction of positive (foreground) proposals to sample for training.
     IN_FEATURES: ["P_4", "P_8", "P_16", "P_32"]
     NUM_CLASSES: 3 # There is 3 instance in the vkitti2 dataset
     # PROPOSAL_APPEND_GT:
@@ -37,20 +37,20 @@ MODEL:
     POOLER_SAMPLING_RATIO: 2 # (maybe put to 2) The `sampling_ratio` parameter for the ROIAlign op.
     POOLER_TYPE: "ROIAlign" # "ROIAlignV2"
     SMOOTH_L1_BETA: 1.0
-    # SCORE_THRESH_TEST: 0.05
+    # SCORE_THRESH_TEST: 0.7
     # NMS_THRESH_TEST: 0.5
     BBOX_REG_LOSS_TYPE: "smooth_l1"
     SMOOTH_L1_BETA: 1.0
     BBOX_REG_LOSS_WEIGHT: 1.0
   ROI_MASK_HEAD:
-    POOLER_RESOLUTION: 14
+    POOLER_RESOLUTION: 28
     POOLER_TYPE: "ROIAlign"
 TEST:
-  DETECTIONS_PER_IMAGE: 100
+  DETECTIONS_PER_IMAGE: 30
 
 INPUT:
-  MIN_SIZE_TRAIN: (360,)
-  MAX_SIZE_TRAIN: 1200
+  MIN_SIZE_TRAIN: (200,)
+  MAX_SIZE_TRAIN: 1000
 #### CUSTOM PARAMETER  #####
 
 # DATA
@@ -90,15 +90,17 @@ SOLVER:
   # BASE_LR_INSTANCE: 0.0004897788193684463 # found with all samples instance segmentation only min_lr 1e-4
   # BASE_LR_INSTANCE: 0.0002818382931264454 # found with 100 samples, min_lr 1e-4
   # BASE_LR_INSTANCE: 1.659586907437561e-05 # Found with 100 samples, min_lr 1e-5, 1000 steps
-  BASE_LR_INSTANCE: 2.0701413487910426e-05 #Found with 1200 sampels, min_lr 1e-5, 1000 steps
+  # BASE_LR_INSTANCE: 2.0701413487910426e-05 #Found with 1200 sampels, min_lr 1e-5, 1000 steps
+  # BASE_LR_INSTANCE: 0.00021379620895022324 # all samples, min lr 1e-4
+  BASE_LR_INSTANCE: 0.0004265795188015926 # 100 samples
   BASE_LR_DEPTH: 1.6749428760264375e-05
   # BASE_LR_SEM_DEPTH: 1.2941958414499863e-05 # Best lr found with all samples, 200x1000
   BASE_LR_SEM_DEPTH: 0.0016
 
   # BASE_LR_PAN_DEPTH: 0.00021379620895022324 # found with 1e-4
   # BASE_LR_PAN_DEPTH: 1.2941958414499863e-05
-  # BASE_LR_PAN_DEPTH: 0.0003981071705534973 # no depth
-  BASE_LR_PAN_DEPTH: 0.0006918309709189366 # depth only
+  BASE_LR_PAN_DEPTH: 0.0003981071705534973 # no depth
+  # BASE_LR_PAN_DEPTH: 0.0006918309709189366 # depth only
   # BASE_LR: 0.9 # found with all samples
   # BASE_LR: 0.003 # found with all samples * 2
   # BASE_LR: 7.585775750291837e-08
@@ -125,9 +127,12 @@ CALLBACKS:
 # CHECKPOINT_PATH_TRAINING: "logs/epoch=32-step=1584.ckpt"
 # CHECKPOINT_PATH_INFERENCE: "logs/epoch=117-step=5664.ckpt"
 # CHECKPOINT_PATH_TRAINING: "logs/epoch=199-step=127600.ckpt" #best for pan
-CHECKPOINT_PATH_TRAINING: "logs/epoch=39-step=25520.ckpt" # epoch 39, no depth
-# CHECKPOINT_PATH_TRAINING: ""
-CHECKPOINT_PATH_INFERENCE: ""
+# CHECKPOINT_PATH_TRAINING: "logs/epoch=39-step=25520.ckpt" # epoch 39, no depth
+# CHECKPOINT_PATH_TRAINING: "logs/epoch=94-step=22800.ckpt" #1000
+# CHECKPOINT_PATH_TRAINING: "logs/epoch=7-step=5104.ckpt"
+# CHECKPOINT_PATH_INFERENCE: "logs/epoch=93-step=2256.ckpt"
+CHECKPOINT_PATH_TRAINING: ""
+CHECKPOINT_PATH_INFERENCE: "logs/epoch=94-step=22800.ckpt" # best with 1000
 BATCH_SIZE: 2
 PRECISION: 32 # Bit precision for mix precision training
 NUM_CLASS: 15 # there are 15 classes in vkitti2 dataset including background
@@ -188,7 +193,7 @@ VKITTI_DATASET:
     VALID_PRED_DIR: "preds_valid"
     PRED_DIR: "preds"
     PRED_DIR_SEMANTIC: "preds_semantic"
-    PRED_DIR_INSTANCE: "preds_instance"
+    PRED_DIR_INSTANCE: "preds_instance_1000_tr"
     PRED_JSON: "vkitti2_panoptic_predictions.json"
     PRED_JSON_SEMANTIC: "vkitti2_semantic_predictions.json"
     PRED_JSON_INSTANCE: "vkitti2_instance_predictions.json"

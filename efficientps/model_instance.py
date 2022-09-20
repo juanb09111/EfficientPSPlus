@@ -8,7 +8,7 @@ from .fpn import TwoWayFpn
 from .backbone import generate_backbone_EfficientPS, output_feature_size
 from .instance_head import InstanceHead
 from .instance_predictions import instance_predictions
-from .panoptic_segmentation_module import scale_resize_pad_masks
+from .panoptic_segmentation_module import scale_resize_pad_masks, check_bbox_size
 import os.path
 import numpy as np
 
@@ -53,7 +53,8 @@ class Instance(pl.LightningModule):
         # Add losses to logs
         [self.log("{}_step".format(k), v, batch_size=self.cfg.BATCH_SIZE, on_step=True, on_epoch=False, sync_dist=False) for k,v in loss.items()]
         [self.log(k, v, batch_size=self.cfg.BATCH_SIZE, on_step=False, on_epoch=True, sync_dist=True) for k,v in loss.items()]
-        self.log('train_loss', sum(loss.values()), batch_size=self.cfg.BATCH_SIZE, on_step=True, on_epoch=True)
+        self.log('train_loss', sum(loss.values()), batch_size=self.cfg.BATCH_SIZE, on_step=True, on_epoch=False, sync_dist=False)
+        self.log('train_loss_epoch', sum(loss.values()), batch_size=self.cfg.BATCH_SIZE, on_step=False, on_epoch=True, sync_dist=True)
         return {'loss': sum(loss.values())}
 
     def shared_step(self, inputs):
@@ -80,19 +81,20 @@ class Instance(pl.LightningModule):
             ) for instance in batch["instance"]]
         
         if predictions["instance"] != None:       
-
+            
+            instances = [check_bbox_size(instance) for instance in predictions["instance"]]
             preds = [dict(
                 boxes=instance.get("pred_boxes").tensor,
                 labels=instance.get("pred_classes"),
-                masks=scale_resize_pad_masks(instance).to(torch.uint8),
+                masks=scale_resize_pad_masks(instance).to(torch.bool),
                 scores=instance.get("scores")
-            ) for instance in predictions["instance"]]
+            ) for instance in instances]
             
         else:
             preds = [dict(
                 boxes=torch.zeros((0, 4), dtype=torch.float).to(self.device),
                 labels=torch.zeros((0), dtype=torch.long).to(self.device),
-                masks=torch.zeros((0), dtype=torch.uint8).to(self.device),
+                masks=torch.zeros((0), dtype=torch.bool).to(self.device),
                 scores=torch.zeros((0), dtype=torch.float).to(self.device)
             ) for _ in batch["instance"]]
         
@@ -104,7 +106,7 @@ class Instance(pl.LightningModule):
     def validation_epoch_end(self, validation_step_outputs):
         
         mAPs = {"val_" + k: v for k, v in self.valid_acc_bbx.compute().items()}
-        self.print(mAPs)
+        # self.print(mAPs)
         mAPs_per_class = mAPs.pop("val_map_per_class")
         mARs_per_class = mAPs.pop("val_mar_100_per_class")
         self.log_dict(mAPs, sync_dist=True)
@@ -151,7 +153,7 @@ class Instance(pl.LightningModule):
         
 
     def configure_optimizers(self):
-        print("Optimizer - using {} with lr {}".format(self.cfg.SOLVER.NAME, self.learning_rate))
+        self.print("Optimizer - using {} with lr {}".format(self.cfg.SOLVER.NAME, self.learning_rate))
         if self.cfg.SOLVER.NAME == "Adam":
             self.optimizer = torch.optim.Adam(self.parameters(),
                                          lr=self.learning_rate,
@@ -167,12 +169,12 @@ class Instance(pl.LightningModule):
         return {
             'optimizer': self.optimizer,
             'lr_scheduler': ReduceLROnPlateau(self.optimizer,
-                                              mode='max',
+                                              mode='min',
                                               patience=10,
                                               factor=0.1,
                                               min_lr=self.cfg.SOLVER.BASE_LR_INSTANCE*1e-4,
                                               verbose=True),
-            'monitor': 'val_map'
+            'monitor': 'train_loss_epoch'
         }
 
     def optimizer_step(self, current_epoch, batch_nb, optimizer, optimizer_idx, closure, on_tpu=False, using_native_amp=False, using_lbfgs=False):

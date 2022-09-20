@@ -10,6 +10,8 @@ from .semantic_head import SemanticHead
 from .depth_head import DepthHead
 from .refine_head import RefineHead
 from .instance_head import InstanceHead
+from .panoptic_segmentation_module import scale_resize_pad_masks, check_bbox_size
+
 
 class Pan_Depth(pl.LightningModule):
     """
@@ -17,7 +19,7 @@ class Pan_Depth(pl.LightningModule):
     Here pytorch lightningis used https://pytorch-lightning.readthedocs.io/en/latest/
     """
 
-    def __init__(self, cfg, lr=None):
+    def __init__(self, cfg, categories, lr=None):
         """
         Args:
         - cfg (Config) : Config object from detectron2
@@ -45,7 +47,8 @@ class Pan_Depth(pl.LightningModule):
 
         self.valid_acc_depth = MeanSquaredError(squared=False)
         self.valid_acc_sem = JaccardIndex(cfg.NUM_CLASS)
-        self.valid_acc_bbx = MeanAveragePrecision()
+        self.valid_acc_bbx = MeanAveragePrecision(class_metrics=True)
+        self.obj_categories=categories
     
 
     def on_load_checkpoint(self, checkpoint):
@@ -94,66 +97,114 @@ class Pan_Depth(pl.LightningModule):
         pred_instance, instance_losses = self.instance_head(pyramid_features, inputs)
 
         # Depth Predictions
-        depth, depth_loss = self.depth_head(img,
-            sparse_depth, 
-            mask, 
-            coors, 
-            k_nn_indices,
-            semantic_logits=semantic_logits, 
-            sparse_depth_gt=sparse_depth_gt)
+        # depth, depth_loss = self.depth_head(img,
+        #     sparse_depth, 
+        #     mask, 
+        #     coors, 
+        #     k_nn_indices,
+        #     semantic_logits=semantic_logits, 
+        #     sparse_depth_gt=sparse_depth_gt)
 
         # Refine Head
-        refined_logits, refine_loss = self.refine_head(
-            semantic_logits, 
-            depth,
-            # depth_full, 
-            output_size, 
-            semantic_gt=semantic_gt)
+        # refined_logits, refine_loss = self.refine_head(
+        #     semantic_logits, 
+        #     # depth,
+        #     depth_full, 
+        #     output_size, 
+        #     semantic_gt=semantic_gt)
         
         # Output set up
-        loss.update(depth_loss)
-        # loss.update(semantic_loss)
+        # loss.update(depth_loss)
+        loss.update(semantic_loss)
         # loss.update(refine_loss)
-        # loss.update(instance_losses)
+        loss.update(instance_losses)
         # loss.update({"loss_sum": depth_loss["depth_loss"] + refine_loss["refine_loss"]})
 
-        predictions.update({'depth': depth})
-        predictions.update({'semantic': refined_logits})
+        # predictions.update({'depth': depth})
+        # predictions.update({'semantic': refined_logits})
+        predictions.update({'semantic': semantic_logits})
         predictions.update({'instance': pred_instance})
         return predictions, loss
 
     def validation_step(self, batch, batch_idx):
         
-        # depth
-        sparse_depth_gt = batch['sparse_depth_gt']
+        # depth -----------
+        # sparse_depth_gt = batch['sparse_depth_gt']
 
-        mask_pos = torch.tensor((1), dtype=torch.float64, device=self.device)
-        mask_neg = torch.tensor((0), dtype=torch.float64, device=self.device)
-        mask_gt = torch.where(sparse_depth_gt > 0, mask_pos, mask_neg)
-        mask_gt = mask_gt.squeeze_(1)
+        # mask_pos = torch.tensor((1), dtype=torch.float64, device=self.device)
+        # mask_neg = torch.tensor((0), dtype=torch.float64, device=self.device)
+        # mask_gt = torch.where(sparse_depth_gt > 0, mask_pos, mask_neg)
+        # mask_gt = mask_gt.squeeze_(1)
         
         predictions, _ = self.shared_step(batch)
 
-        pred_depth = torch.squeeze(predictions["depth"], 1)*mask_gt
-
+        # pred_depth = torch.squeeze(predictions["depth"], 1)*mask_gt
+        # --------------------------
         #semantic
         pred_semantic = F.softmax(predictions["semantic"], dim=1)
 
-        # Metrics
+        # Metrics Semantic
         self.valid_acc_sem(pred_semantic, batch["semantic"])
-        self.valid_acc_depth(pred_depth, sparse_depth_gt.squeeze_(1)*mask_gt)
         self.log('IoU', self.valid_acc_sem, on_step=False, on_epoch=True, sync_dist=True)
-        self.log('RMSE', self.valid_acc_depth, on_step=False, on_epoch=True, sync_dist=True)
+
+        # Merics Depth
+        # self.valid_acc_depth(pred_depth, sparse_depth_gt.squeeze_(1)*mask_gt)
+        # self.log('RMSE', self.valid_acc_depth, on_step=False, on_epoch=True, sync_dist=True)
 
         # # Instance
 
-        # target = [dict(
-        #         boxes=instance.get("gt_boxes").tensor,
-        #         labels=instance.get("gt_classes"),
-        #         masks=instance.get("gt_masks").tensor
-        #     ) for instance in batch["instance"]]
-
+        target = [dict(
+                boxes=instance.get("gt_boxes").tensor,
+                labels=instance.get("gt_classes"),
+                masks=instance.get("gt_masks").tensor
+            ) for instance in batch["instance"]]
         
+        if predictions["instance"] != None:       
+            
+            instances = [check_bbox_size(instance) for instance in predictions["instance"]]
+            preds = [dict(
+                boxes=instance.get("pred_boxes").tensor,
+                labels=instance.get("pred_classes"),
+                masks=scale_resize_pad_masks(instance).to(torch.bool),
+                scores=instance.get("scores")
+            ) for instance in instances]
+            
+        else:
+            preds = [dict(
+                boxes=torch.zeros((0, 4), dtype=torch.float).to(self.device),
+                labels=torch.zeros((0), dtype=torch.long).to(self.device),
+                masks=torch.zeros((0), dtype=torch.bool).to(self.device),
+                scores=torch.zeros((0), dtype=torch.float).to(self.device)
+            ) for _ in batch["instance"]]
+        
+        # Metric
+        # self.valid_acc_bbx(preds, target)
+        # self.log_dict(self.valid_acc_bbx, on_step=False, on_epoch=True, sync_dist=True)
+        self.valid_acc_bbx.update(preds, target)
+
+    def validation_epoch_end(self, validation_step_outputs):
+        
+        mAPs = {"val_" + k: v for k, v in self.valid_acc_bbx.compute().items()}
+        # self.print(mAPs)
+        mAPs_per_class = mAPs.pop("val_map_per_class")
+        mARs_per_class = mAPs.pop("val_mar_100_per_class")
+        
+        self.log_dict(mAPs, sync_dist=True)
+        self.log_dict(
+            {
+                f"val_map_{label}": value
+                for label, value in zip(self.obj_categories.values(), mAPs_per_class)
+            },
+            sync_dist=True,
+        )
+        self.log_dict(
+            {
+                f"val_mar_100_{label}": value
+                for label, value in zip(self.obj_categories.values(), mARs_per_class)
+            },
+            sync_dist=True,
+        )
+        self.valid_acc_bbx.reset()
 
 
     # def predict_step(self, batch, batch_idx, dataloader_idx=0):
@@ -205,7 +256,7 @@ class Pan_Depth(pl.LightningModule):
                                               factor=0.1,
                                               min_lr=self.cfg.SOLVER.BASE_LR_PAN_DEPTH*1e-4,
                                               verbose=True),
-            'monitor': 'RMSE'
+            'monitor': 'train_loss_epoch'
         }
 
     def optimizer_step(self, current_epoch, batch_nb, optimizer, optimizer_idx, closure, on_tpu=False, using_native_amp=False, using_lbfgs=False):

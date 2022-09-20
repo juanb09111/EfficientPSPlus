@@ -28,16 +28,10 @@ if __name__ == "__main__":
     parser.add_argument('--ip_adress', type=str, required=True,
                         help='ip address of the host node')
 
-    parser.add_argument('--ngpus', default=4, type=int,
-                        help='number of gpus per node')
-
     parser.add_argument('--model_name', type=str, required=True, help="Name of the model to train. Look up in models.py")
 
     parser.add_argument('--config', type=str, required=True, help="Config file from configs/")
-    
-    parser.add_argument('--fast_dev', action='store_true')
 
-    parser.add_argument('--tune', action='store_true')
     
     args = parser.parse_args()
 
@@ -46,13 +40,8 @@ if __name__ == "__main__":
         raise ValueError("model_name must be one of: ", MODELS)
     inference_loop = get_inference_loop(args.model_name)
 
-    # Total number of gpus availabe to us.
-    args.world_size = args.ngpus * args.nodes
     # add the ip address to the environment variable so it can be easily avialbale
     os.environ['MASTER_ADDR'] = args.ip_adress
     print("ip_adress is", args.ip_adress)
     os.environ['MASTER_PORT'] = '12355'
-    os.environ['WORLD_SIZE'] = str(args.world_size)
-    # nprocs: number of process which is equal to args.ngpu here
     inference_loop(args)
-    # mp.spawn(train_loop, nprocs=args.ngpus, args=(args,))

@@ -61,9 +61,9 @@ def train(args):
     # logger.info(efficientps.print)
     ModelSummary(effps_instance, max_depth=-1)
     # Callbacks / Hooks
-    early_stopping = EarlyStopping('val_map', patience=30, mode='max')
-    checkpoint = ModelCheckpoint(monitor='val_map',
-                                 mode='max',
+    early_stopping = EarlyStopping('train_loss_epoch', patience=30, mode='min')
+    checkpoint = ModelCheckpoint(monitor='train_loss_epoch',
+                                 mode='min',
                                  dirpath=cfg.CALLBACKS.CHECKPOINT_DIR,
                                  save_last=True,
                                  verbose=True)
@@ -71,7 +71,7 @@ def train(args):
     lr_monitor = LearningRateMonitor(logging_interval='epoch')
 
     #logger
-    tb_logger = pl_loggers.TensorBoardLogger("tb_logs_2", name="effps_instance_lr_0.00021")
+    tb_logger = pl_loggers.TensorBoardLogger("tb_logs_2", name="effps_instance_all_2")
     # Create a pytorch lighting trainer
     trainer = pl.Trainer(
         # weights_summary='full',

@@ -128,7 +128,11 @@ def scale_resize_pad_masks(instance):
     boxes = instance.pred_boxes.tensor
     masks = instance.pred_masks
     resized_masks = []
+    # print("pred_classes", instance.pred_classes)
     # Loop on proposal
+    if len(boxes) == 0:
+        # print("NO OBJECTS DETECTED", instance.pred_classes)
+        return torch.zeros((0), dtype=torch.bool)
     for box, mask in zip(boxes, masks):
         # Retrieve bbox dimension
         box = torch.round(box).cpu().numpy()

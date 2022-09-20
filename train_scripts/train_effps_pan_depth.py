@@ -17,6 +17,7 @@ from detectron2.utils.events import _CURRENT_STORAGE_STACK, EventStorage
 from efficientps import Pan_Depth
 from utils.add_custom_params import add_custom_params
 from datasets.vkitti_depth_dataset import get_dataloaders
+from datasets.vkitti_cats import obj_categories
 
 
 
@@ -42,6 +43,7 @@ def train(args):
     #Get dataloaders
     if cfg.DATASET_TYPE == "vkitti2":
         train_loader, valid_loader, _ = get_dataloaders(cfg)
+        categories = obj_categories
 
     # Create model or load a checkpoint
     if os.path.exists(cfg.CHECKPOINT_PATH_TRAINING):
@@ -49,12 +51,12 @@ def train(args):
         print("Loading model from {}".format(cfg.CHECKPOINT_PATH_TRAINING))
         print('""""""""""""""""""""""""""""""""""""""""""""""')
         efficientps = Pan_Depth.load_from_checkpoint(cfg=cfg,
-            checkpoint_path=cfg.CHECKPOINT_PATH_TRAINING, lr=cfg.SOLVER.BASE_LR_PAN_DEPTH)
+            checkpoint_path=cfg.CHECKPOINT_PATH_TRAINING, categories=categories)
     else:
         print('""""""""""""""""""""""""""""""""""""""""""""""')
         print("Creating a new model")
         print('""""""""""""""""""""""""""""""""""""""""""""""')
-        efficientps = Pan_Depth(cfg)
+        efficientps = Pan_Depth(cfg, categories=categories)
         cfg.CHECKPOINT_PATH_TRAINING = None
 
     #print lr
@@ -62,8 +64,8 @@ def train(args):
     # logger.info(efficientps.print)
     ModelSummary(efficientps, max_depth=-1)
     # Callbacks / Hooks
-    early_stopping = EarlyStopping('RMSE', patience=30, mode='min')
-    checkpoint = ModelCheckpoint(monitor='RMSE',
+    early_stopping = EarlyStopping('train_loss_epoch', patience=30, mode='min')
+    checkpoint = ModelCheckpoint(monitor='train_loss_epoch',
                                  mode='min',
                                  dirpath=cfg.CALLBACKS.CHECKPOINT_DIR,
                                  save_last=True,
@@ -72,7 +74,7 @@ def train(args):
     lr_monitor = LearningRateMonitor(logging_interval='epoch')
 
     #logger
-    tb_logger = pl_loggers.TensorBoardLogger("tb_logs_2", name="effps_pan_depth_depth_only_2")
+    tb_logger = pl_loggers.TensorBoardLogger("tb_logs_2", name="effps_depth_no_depth_2")
     # Create a pytorch lighting trainer
     trainer = pl.Trainer(
         # weights_summary='full',

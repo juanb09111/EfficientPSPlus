@@ -5,7 +5,8 @@ import logging
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import (
     EarlyStopping,
-    ModelCheckpoint
+    ModelCheckpoint,
+    LearningRateMonitor
 )
 from pytorch_lightning.utilities.model_summary  import ModelSummary
 from pytorch_lightning import loggers as pl_loggers
@@ -66,8 +67,10 @@ def train(args):
                                  save_last=True,
                                  verbose=True,)
 
+    lr_monitor = LearningRateMonitor(logging_interval='epoch')
+
     #logger
-    tb_logger = pl_loggers.TensorBoardLogger("tb_logs", name="effps_depth")
+    tb_logger = pl_loggers.TensorBoardLogger("tb_logs", name="effps_depth_no_depth_2")
     # Create a pytorch lighting trainer
     trainer = pl.Trainer(
         # weights_summary='full',
@@ -79,7 +82,7 @@ def train(args):
         accelerator='gpu',
         num_sanity_val_steps=0,
         fast_dev_run=cfg.SOLVER.FAST_DEV_RUN if args.fast_dev else False,
-        callbacks=[early_stopping, checkpoint],
+        callbacks=[early_stopping, checkpoint, lr_monitor],
         # precision=cfg.PRECISION,
         resume_from_checkpoint=cfg.CHECKPOINT_PATH_TRAINING,
         # gradient_clip_val=0,
@@ -87,7 +90,7 @@ def train(args):
     )
     logger.addHandler(logging.StreamHandler())
     if args.tune:
-        lr_finder = trainer.tuner.lr_find(efficientps, train_loader, valid_loader, min_lr=1e-5, max_lr=0.1, num_training=1000)
+        lr_finder = trainer.tuner.lr_find(efficientps, train_loader, valid_loader, min_lr=1e-4, max_lr=0.1, num_training=100)
         print("LR found:", lr_finder.suggestion())
     else:
         trainer.fit(efficientps, train_loader, val_dataloaders=valid_loader)
