@@ -90,7 +90,7 @@ def train(args):
     )
     logger.addHandler(logging.StreamHandler())
     if args.tune:
-        lr_finder = trainer.tuner.lr_find(efficientps, train_loader, valid_loader, min_lr=1e-5, max_lr=0.1, num_training=1000)
+        lr_finder = trainer.tuner.lr_find(efficientps, train_loader, valid_loader, min_lr=1e-4, max_lr=0.1, num_training=100)
         print("LR found:", lr_finder.suggestion())
     else:
         trainer.fit(efficientps, train_loader, val_dataloaders=valid_loader)
