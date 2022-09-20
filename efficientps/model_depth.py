@@ -38,8 +38,8 @@ class Depth(pl.LightningModule):
         _, loss = self.shared_step(batch)
         
         # Add losses to logs
-        [self.log(k, v, batch_size=self.cfg.BATCH_SIZE, on_step=True, on_epoch=True) for k,v in loss.items()]
-        # self.log('train_loss', sum(loss.values()), batch_size=self.cfg.BATCH_SIZE)
+        [self.log("{}_step".format(k), v, batch_size=self.cfg.BATCH_SIZE, on_step=True, on_epoch=False, sync_dist=False) for k,v in loss.items()]
+        [self.log(k, v, batch_size=self.cfg.BATCH_SIZE, on_step=False, on_epoch=True, sync_dist=True) for k,v in loss.items()]
         return {'loss': sum(loss.values())}
 
     def shared_step(self, inputs):
