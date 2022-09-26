@@ -103,4 +103,4 @@ categories = [{
     "supercategory": "background"
 }]
 
-obj_categories={1:"Truck", 2:"Car", 3:"Van"}
+obj_categories={0:"Truck", 1:"Car", 2:"Van"}
