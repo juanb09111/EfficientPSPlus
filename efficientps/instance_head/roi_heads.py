@@ -55,7 +55,7 @@ class CustomROIHeads(ROIHeads):
         self.mask_in_features = in_features
         self.mask_pooler = mask_pooler
         self.mask_head = mask_head
-        self.mask_on = True
+        self.mask_on = False
 
     @classmethod
     def from_config(cls, cfg, input_shape):
@@ -102,7 +102,7 @@ class CustomROIHeads(ROIHeads):
         if self.training:
             losses = self._forward_box(features, proposals)
             # print(self._forward_mask(features, proposals))
-            losses.update(self._forward_mask(features, proposals))
+            # losses.update(self._forward_mask(features, proposals))
             return proposals, losses
         else:
             # Check that there is proposal given by the rpn
@@ -112,8 +112,8 @@ class CustomROIHeads(ROIHeads):
             # During inference cascaded prediction is used: the mask and keypoints heads are only
             # applied to the top scoring box detections.
             # Check if all proposal has been removed by the IoU thresh and score thresh
-            if pred_instances is not None:
-                pred_instances = self.forward_with_given_boxes(features, pred_instances)
+            # if pred_instances is not None:
+            #     pred_instances = self.forward_with_given_boxes(features, pred_instances)
             return pred_instances, {}
 
     def _forward_mask(self, features: Dict[str, torch.Tensor], instances: List[Instances]):
