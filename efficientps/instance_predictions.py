@@ -13,6 +13,9 @@ def instance_predictions(cfg, outputs):
     if cfg.DATASET_TYPE == "vkitti2":
         pred_dir = os.path.join(cfg.VKITTI_DATASET.DATASET_PATH.ROOT, cfg.VKITTI_DATASET.DATASET_PATH.PRED_DIR_INSTANCE)
         if not os.path.exists(pred_dir): os.makedirs(pred_dir)
+    elif cfg.DATASET_TYPE == "odFridgeObjects":
+        pred_dir = "tb_logs_2/maskrcnn/preds_2"
+        if not os.path.exists(pred_dir): os.makedirs(pred_dir)
 
     for output in tqdm(outputs):
         if output["preds"] != None:
@@ -22,10 +25,11 @@ def instance_predictions(cfg, outputs):
                 vis = Visualizer(im)
 
                 instance = check_bbox_size(preds)
-                masks = scale_resize_pad_masks(instance)
-                masks =np.asarray([mask.cpu().numpy() for mask in masks])
-                masks = np.where(masks > 0.5, int(1), 0)
-                instance.pred_masks = masks
+                if instance.has('pred_masks'):
+                    masks = scale_resize_pad_masks(instance)
+                    masks =np.asarray([mask.cpu().numpy() for mask in masks])
+                    masks = np.where(masks > 0.5, int(1), 0)
+                    instance.pred_masks = masks
                 vis.draw_instance_predictions(instance)
                 output = vis.get_output()
 
