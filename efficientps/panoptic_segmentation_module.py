@@ -75,9 +75,9 @@ def check_bbox_size(instance):
     """
     new_instance = Instances(instance.image_size)
     boxes = instance.pred_boxes.tensor
-    masks = instance.pred_masks
+    # masks = instance.pred_masks
     inds = []
-    for i, (box, mask) in enumerate(zip(boxes, masks)):
+    for i, box in enumerate(boxes):
         # Retrieve bbox dimension
         box = torch.round(box).cpu().numpy()
         w = int(box[2]) - int(box[0])
@@ -85,7 +85,7 @@ def check_bbox_size(instance):
         if h == 0 or w == 0:
             continue
         inds.append(i)
-    new_instance.pred_masks = instance.pred_masks[inds]
+    # new_instance.pred_masks = instance.pred_masks[inds]
     new_instance.pred_boxes = instance.pred_boxes[inds]
     new_instance.pred_classes = instance.pred_classes[inds]
     new_instance.scores = instance.scores[inds]
