@@ -11,6 +11,7 @@ from train_scripts import train_effps_instance
 from train_scripts import train_effps_depth
 from train_scripts import train_effps_sem_depth
 from train_scripts import train_effps_pan_depth
+from train_scripts import train_mask_r_cnn
 
 # # from ignite.contrib.handlers.param_scheduler import PiecewiseLinear
 
@@ -21,7 +22,8 @@ MODELS = ["EfficientPS",
           "EfficientPS_instance",
           "EfficientPS_depth",
           "EfficientPS_sem_depth",
-          "EfficientPS_pan_depth"]
+          "EfficientPS_pan_depth",
+          "mask_r_cnn"]
 
 def get_train_loop(model_name):
     if model_name == "EfficientPS_Plus":
@@ -38,6 +40,8 @@ def get_train_loop(model_name):
         return train_effps_sem_depth.train
     if model_name == "EfficientPS_pan_depth":
         return train_effps_pan_depth.train
+    if model_name == "mask_r_cnn":
+        return train_mask_r_cnn.train
 
     
           

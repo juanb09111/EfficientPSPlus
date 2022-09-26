@@ -6,16 +6,19 @@ import torch.multiprocessing as mp
 from argparse import ArgumentParser
 from inference_scripts import inference_effps
 from inference_scripts import inference_effps_instance
+from inference_scripts import inference_mask_r_cnn
 
 # # from ignite.contrib.handlers.param_scheduler import PiecewiseLinear
 
-MODELS = ["EfficientPS", "EfficientPS_instance"]
+MODELS = ["EfficientPS", "EfficientPS_instance", "mask_r_cnn"]
 
 def get_inference_loop(model_name):
     if model_name == "EfficientPS":
         return inference_effps.inference
     if model_name == "EfficientPS_instance":
         return inference_effps_instance.inference
+    if model_name == "mask_r_cnn":
+        return inference_mask_r_cnn.inference
     
           
 
