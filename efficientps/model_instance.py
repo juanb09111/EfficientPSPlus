@@ -77,7 +77,7 @@ class Instance(pl.LightningModule):
         target = [dict(
                 boxes=instance.get("gt_boxes").tensor,
                 labels=instance.get("gt_classes"),
-                masks=instance.get("gt_masks").tensor
+                # masks=instance.get("gt_masks").tensor
             ) for instance in batch["instance"]]
         
         if predictions["instance"] != None:       
@@ -86,7 +86,7 @@ class Instance(pl.LightningModule):
             preds = [dict(
                 boxes=instance.get("pred_boxes").tensor,
                 labels=instance.get("pred_classes"),
-                masks=scale_resize_pad_masks(instance).to(torch.bool),
+                # masks=scale_resize_pad_masks(instance).to(torch.bool),
                 scores=instance.get("scores")
             ) for instance in instances]
             
@@ -94,13 +94,10 @@ class Instance(pl.LightningModule):
             preds = [dict(
                 boxes=torch.zeros((0, 4), dtype=torch.float).to(self.device),
                 labels=torch.zeros((0), dtype=torch.long).to(self.device),
-                masks=torch.zeros((0), dtype=torch.bool).to(self.device),
+                # masks=torch.zeros((0), dtype=torch.bool).to(self.device),
                 scores=torch.zeros((0), dtype=torch.float).to(self.device)
             ) for _ in batch["instance"]]
         
-        # Metric
-        # self.valid_acc_bbx(preds, target)
-        # self.log_dict(self.valid_acc_bbx, on_step=False, on_epoch=True, sync_dist=True)
         self.valid_acc_bbx.update(preds, target)
     
     def validation_epoch_end(self, validation_step_outputs):
@@ -126,9 +123,6 @@ class Instance(pl.LightningModule):
         )
         self.valid_acc_bbx.reset()
 
-    # def validation_epoch_end(self, outputs):
-    #     self.log_dict(self.valid_acc_bbx.compute(), sync_dist=True)
-    #     self.valid_acc_bbx.reset()
 
     def predict_step(self, batch, batch_idx, dataloader_idx=0):
 
@@ -153,6 +147,7 @@ class Instance(pl.LightningModule):
         
 
     def configure_optimizers(self):
+        print("Optimizer - using {} with lr {}".format(self.cfg.SOLVER.NAME, self.learning_rate))
         self.print("Optimizer - using {} with lr {}".format(self.cfg.SOLVER.NAME, self.learning_rate))
         if self.cfg.SOLVER.NAME == "Adam":
             self.optimizer = torch.optim.Adam(self.parameters(),
@@ -170,7 +165,7 @@ class Instance(pl.LightningModule):
             'optimizer': self.optimizer,
             'lr_scheduler': ReduceLROnPlateau(self.optimizer,
                                               mode='min',
-                                              patience=10,
+                                              patience=5,
                                               factor=0.1,
                                               min_lr=self.cfg.SOLVER.BASE_LR_INSTANCE*1e-4,
                                               verbose=True),
