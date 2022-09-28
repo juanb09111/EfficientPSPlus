@@ -301,11 +301,10 @@ def get_train_transforms(cfg):
     h_resize, w_resize = (cfg.VKITTI_DATASET.RESIZE.HEIGHT, cfg.VKITTI_DATASET.RESIZE.WIDTH)
 
 
-    # custom_transforms.append(A.Rotate(limit=int(15), p=1))
     custom_transforms.append(A.Resize(height=h_resize, width=w_resize))
     custom_transforms.append(A.RandomCrop(width=w_crop, height=h_crop))
     custom_transforms.append(A.CenterCrop(width=w_ccrop, height=h_ccrop))
-    # custom_transforms.append(A.HorizontalFlip(p=cfg.VKITTI_DATASET.HFLIP))
+    custom_transforms.append(A.HorizontalFlip(p=cfg.VKITTI_DATASET.HFLIP))
     custom_transforms.append(A.Normalize(mean=cfg.VKITTI_DATASET.NORMALIZE.MEAN, std=cfg.VKITTI_DATASET.NORMALIZE.STD))
     custom_transforms.append(ToTensorV2())
 
@@ -319,11 +318,9 @@ def get_val_transforms(cfg):
     h_resize, w_resize = (cfg.VKITTI_DATASET.RESIZE.HEIGHT, cfg.VKITTI_DATASET.RESIZE.WIDTH)
 
 
-    # custom_transforms.append(A.Rotate(limit=int(15), p=1))
     custom_transforms.append(A.Resize(height=h_resize, width=w_resize))
     custom_transforms.append(A.RandomCrop(width=w_crop, height=h_crop))
     custom_transforms.append(A.CenterCrop(width=w_ccrop, height=h_ccrop))
-    # custom_transforms.append(A.HorizontalFlip(p=cfg.VKITTI_DATASET.HFLIP))
     custom_transforms.append(A.Normalize(mean=cfg.VKITTI_DATASET.NORMALIZE.MEAN, std=cfg.VKITTI_DATASET.NORMALIZE.STD))
     custom_transforms.append(ToTensorV2())
 
@@ -409,7 +406,7 @@ class VkittiDataModule(LightningDataModule):
         return val_dataset
 
     def val_dataloader(self) -> DataLoader:
-        val_dataset = self.train_dataset()
+        val_dataset = self.val_dataset()
         val_loader = torch.utils.data.DataLoader(
             val_dataset,
             batch_size=self.batch_size,
@@ -430,7 +427,7 @@ class VkittiDataModule(LightningDataModule):
         return predict_dataset
 
     def predict_dataloader(self) -> DataLoader:
-        predict_dataset = self.train_dataset()
+        predict_dataset = self.predict_dataset()
         predict_loader = torch.utils.data.DataLoader(
             predict_dataset,
             batch_size=self.batch_size,

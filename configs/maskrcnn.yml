@@ -84,7 +84,7 @@ DATASET_TYPE: "vkitti2"
 
 VKITTI_DATASET:
   STUFF_CLASSES: 12
-  MAX_SAMPLES: 128 #Number of training samples, null for all 
+  MAX_SAMPLES: null #Number of training samples, null for all 
   SPLIT_DATASET: True
   SPLITS: [0.80, 0.15, 0.05]
   SHUFFLE: True
