@@ -78,32 +78,43 @@ TRANSFORM:
 # Solver
 SOLVER:
   NAME: "SGD" # Adam or SGD
-  # BASE_LR: 0.0016
-  # BASE_LR: 0.01445439770745928
-  # BASE_LR: 0.002754228703338169
-  # BASE_LR: 0.0009120108393559097 #found with 3k samples
-  # BASE_LR: 0.003981071705534969 # found with 6k samples
-  BASE_LR: 0.00024547089156850307 # found will all samples, panoptic, min_lr=1e-4
-  BASE_LR_SEMANTIC: 0.0013182567385564075 # found with all samples semantic segmentation only min_lr 1e-4
-  # BASE_LR_SEMANTIC: 0.006025595860743576 # all samples, 200x1000, min_lr=1e-5
-  # BASE_LR_INSTANCE: 0.00014454397707459272 # found with all samples instance segmentation only min_lr 1e-5
-  # BASE_LR_INSTANCE: 0.0004897788193684463 # found with all samples instance segmentation only min_lr 1e-4
-  # BASE_LR_INSTANCE: 0.0002818382931264454 # found with 100 samples, min_lr 1e-4
-  # BASE_LR_INSTANCE: 1.659586907437561e-05 # Found with 100 samples, min_lr 1e-5, 1000 steps
-  # BASE_LR_INSTANCE: 2.0701413487910426e-05 #Found with 1200 sampels, min_lr 1e-5, 1000 steps
-  # BASE_LR_INSTANCE: 0.00021379620895022324 # all samples, min lr 1e-4
-  BASE_LR_INSTANCE: 0.0004265795188015926 # 100 samples
-  BASE_LR_DEPTH: 1.6749428760264375e-05
-  # BASE_LR_SEM_DEPTH: 1.2941958414499863e-05 # Best lr found with all samples, 200x1000
-  BASE_LR_SEM_DEPTH: 0.0016
+  # Semantic and depth learning rates---------------
+  BASE_LR_SEM_DEPTH: 0.0004570881896148751 #lr finder
+  # BASE_LR_SEM_DEPTH: 0.0016 #from fuse net paper
 
-  # BASE_LR_PAN_DEPTH: 0.00021379620895022324 # found with 1e-4
-  # BASE_LR_PAN_DEPTH: 1.2941958414499863e-05
-  BASE_LR_PAN_DEPTH: 0.0003981071705534973 # no depth
-  # BASE_LR_PAN_DEPTH: 0.0006918309709189366 # depth only
-  # BASE_LR: 0.9 # found with all samples
-  # BASE_LR: 0.003 # found with all samples * 2
-  # BASE_LR: 7.585775750291837e-08
+  # Depth learning rate
+  BASE_LR_DEPTH: 1.6749428760264375e-05
+
+  #-----------------------------------------------------------------
+  # # BASE_LR: 0.0016
+  # # BASE_LR: 0.01445439770745928
+  # # BASE_LR: 0.002754228703338169
+  # # BASE_LR: 0.0009120108393559097 #found with 3k samples
+  # # BASE_LR: 0.003981071705534969 # found with 6k samples
+  # BASE_LR: 0.00024547089156850307 # found will all samples, panoptic, min_lr=1e-4
+  # BASE_LR_SEMANTIC: 0.0013182567385564075 # found with all samples semantic segmentation only min_lr 1e-4
+  # # BASE_LR_SEMANTIC: 0.006025595860743576 # all samples, 200x1000, min_lr=1e-5
+  # # BASE_LR_INSTANCE: 0.00014454397707459272 # found with all samples instance segmentation only min_lr 1e-5
+  # # BASE_LR_INSTANCE: 0.0004897788193684463 # found with all samples instance segmentation only min_lr 1e-4
+  # # BASE_LR_INSTANCE: 0.0002818382931264454 # found with 100 samples, min_lr 1e-4
+  # # BASE_LR_INSTANCE: 1.659586907437561e-05 # Found with 100 samples, min_lr 1e-5, 1000 steps
+  # # BASE_LR_INSTANCE: 2.0701413487910426e-05 #Found with 1200 sampels, min_lr 1e-5, 1000 steps
+  # # BASE_LR_INSTANCE: 0.00021379620895022324 # all samples, min lr 1e-4
+  # BASE_LR_INSTANCE: 0.0004265795188015926 # 100 samples
+  # BASE_LR_DEPTH: 1.6749428760264375e-05
+  # # BASE_LR_SEM_DEPTH: 1.2941958414499863e-05 # Best lr found with all samples, 200x1000
+  # BASE_LR_SEM_DEPTH: 0.0016
+
+  # # BASE_LR_PAN_DEPTH: 0.00021379620895022324 # found with 1e-4
+  # # BASE_LR_PAN_DEPTH: 1.2941958414499863e-05
+  # BASE_LR_PAN_DEPTH: 0.0003981071705534973 # no depth
+  # # BASE_LR_PAN_DEPTH: 0.0006918309709189366 # depth only
+  # # BASE_LR: 0.9 # found with all samples
+  # # BASE_LR: 0.003 # found with all samples * 2
+  # # BASE_LR: 7.585775750291837e-08
+  #-------------------------------------
+
+
   WEIGHT_DECAY: 0.1 # Only for SGD
   WARMUP_ITERS: 0 # Set to 0 for no warmup
   ACCUMULATE_GRAD: 2 # Number of accumulated epochs for accumulated gradient
@@ -130,8 +141,9 @@ CALLBACKS:
 # CHECKPOINT_PATH_TRAINING: "logs/epoch=39-step=25520.ckpt" # epoch 39, no depth
 # CHECKPOINT_PATH_TRAINING: "logs/epoch=94-step=22800.ckpt" #1000
 # CHECKPOINT_PATH_TRAINING: "logs/epoch=7-step=5104.ckpt"
-# CHECKPOINT_PATH_INFERENCE: "logs/epoch=93-step=2256.ckpt"
+# CHECKPOINT_PATH_TRAINING: "logs/epoch=7-step=5104-v1.ckpt" effps depth no depth  0.00039811
 CHECKPOINT_PATH_TRAINING: ""
+# CHECKPOINT_PATH_INFERENCE: "logs/epoch=93-step=2256.ckpt"
 CHECKPOINT_PATH_INFERENCE: "logs/epoch=94-step=22800.ckpt" # best with 1000
 BATCH_SIZE: 2
 PRECISION: 32 # Bit precision for mix precision training
@@ -198,5 +210,3 @@ VKITTI_DATASET:
     PRED_JSON_SEMANTIC: "vkitti2_semantic_predictions.json"
     PRED_JSON_INSTANCE: "vkitti2_instance_predictions.json"
   EXCLUDE: ["15-deg-left", "15-deg-right", "30-deg-left", "30-deg-right"]
-
-

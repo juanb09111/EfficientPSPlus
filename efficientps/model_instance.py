@@ -77,7 +77,7 @@ class Instance(pl.LightningModule):
         target = [dict(
                 boxes=instance.get("gt_boxes").tensor,
                 labels=instance.get("gt_classes"),
-                # masks=instance.get("gt_masks").tensor
+                masks=instance.get("gt_masks").tensor
             ) for instance in batch["instance"]]
         
         if predictions["instance"] != None:       
@@ -86,7 +86,7 @@ class Instance(pl.LightningModule):
             preds = [dict(
                 boxes=instance.get("pred_boxes").tensor,
                 labels=instance.get("pred_classes"),
-                # masks=scale_resize_pad_masks(instance).to(torch.bool),
+                masks=scale_resize_pad_masks(instance).to(torch.bool),
                 scores=instance.get("scores")
             ) for instance in instances]
             
@@ -94,7 +94,7 @@ class Instance(pl.LightningModule):
             preds = [dict(
                 boxes=torch.zeros((0, 4), dtype=torch.float).to(self.device),
                 labels=torch.zeros((0), dtype=torch.long).to(self.device),
-                # masks=torch.zeros((0), dtype=torch.bool).to(self.device),
+                masks=torch.zeros((0), dtype=torch.bool).to(self.device),
                 scores=torch.zeros((0), dtype=torch.float).to(self.device)
             ) for _ in batch["instance"]]
         

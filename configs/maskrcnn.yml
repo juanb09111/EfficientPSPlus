@@ -1,6 +1,6 @@
 VERSION: 2
 MODEL:
-  MASK_ON: False
+  MASK_ON: True
   ANCHOR_GENERATOR:
     SIZES: [[32], [64], [128], [256]]  # One size for each in feature map
     ASPECT_RATIOS: [[0.5, 1.0, 2.0]]  # Three aspect ratios (same for all in feature maps)
@@ -34,7 +34,7 @@ MODEL:
     SCORE_THRESH_TEST: 0.5 # First step of panoptic fusion module
     NMS_THRESH_TEST: 0.5 # Second step of panoptic fusion module
   # ROI_BOX_HEAD:
-  #   POOLER_RESOLUTION: 7
+    # POOLER_RESOLUTION: 28
   #   POOLER_SAMPLING_RATIO: 2 # (maybe put to 2) The `sampling_ratio` parameter for the ROIAlign op.
   #   POOLER_TYPE: "ROIAlign" # "ROIAlignV2"
   #   SMOOTH_L1_BETA: 1.0
@@ -52,7 +52,7 @@ TEST:
 
 INPUT:
   MIN_SIZE_TRAIN: (200,)
-  MIN_SIZE_TEST: (200,)
+  MIN_SIZE_TEST: 200
 
 BATCH_SIZE: 4
 MODEL_CUSTOM:
@@ -61,7 +61,9 @@ MODEL_CUSTOM:
     LOAD_PRETRAIN: True # Load pretrained EfficienNet model
 
 SOLVER:
-  NAME: "SGD" # Adam or SGD
+  NAME: "Adam" # Adam or SGD
+
+  WARMUP_ITERS: 4000 # Set to 0 for no warmup
 
   # Semantic and depth learning rates---------------
   BASE_LR_SEM_DEPTH: 0.0004570881896148751 #lr finder
@@ -74,8 +76,9 @@ SOLVER:
   BASE_LR_INSTANCE: 0.02
 
 CHECKPOINT_PATH_TRAINING: ""
+# CHECKPOINT_PATH_TRAINING: "tb_logs_2/maskrcnn_vkitti_cls3_4_gpus_warmup4k_best_Adam/version_0/checkpoints/last.ckpt"
 # CHECKPOINT_PATH_INFERENCE: "'tb_logs_2/maskrcnn/version_38/checkpoints/epoch=126-step=2032.ckpt'"
-CHECKPOINT_PATH_INFERENCE: "tb_logs_2/maskrcnn_vkitti/version_0/checkpoints/epoch=168-step=4225.ckpt"
+CHECKPOINT_PATH_INFERENCE: "tb_logs_2/maskrcnn_vkitti_best_mask/version_1/checkpoints/epoch=204-step=5125.ckpt"
 # DATASET_TYPE: "odFridgeObjects"
 DATASET_TYPE: "vkitti2"
 
@@ -127,7 +130,7 @@ VKITTI_DATASET:
     VALID_PRED_DIR: "preds_valid"
     PRED_DIR: "preds"
     PRED_DIR_SEMANTIC: "preds_semantic"
-    PRED_DIR_INSTANCE: "preds_instance_1000_tr"
+    PRED_DIR_INSTANCE: "preds_instance_best_mask"
     PRED_JSON: "vkitti2_panoptic_predictions.json"
     PRED_JSON_SEMANTIC: "vkitti2_semantic_predictions.json"
     PRED_JSON_INSTANCE: "vkitti2_instance_predictions.json"
