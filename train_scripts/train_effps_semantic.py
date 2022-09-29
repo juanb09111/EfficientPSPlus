@@ -16,7 +16,10 @@ from detectron2.utils.events import _CURRENT_STORAGE_STACK, EventStorage
 
 from efficientps import Semantic
 from utils.add_custom_params import add_custom_params
-from datasets.vkitti_dataset import get_dataloaders
+
+
+from datasets.vkitti_depth_datamodule import VkittiDataModule
+from datasets.vkitti_cats import obj_categories as vkitti_cats
 
 
 
@@ -30,10 +33,10 @@ def train(args):
     
     logging.getLogger("pytorch_lightning").setLevel(logging.INFO)
     logger = logging.getLogger("pytorch_lightning.core")
-    if not os.path.exists(cfg.CALLBACKS.CHECKPOINT_DIR):
-        os.makedirs(cfg.CALLBACKS.CHECKPOINT_DIR)
-    logger.addHandler(logging.FileHandler(
-        os.path.join(cfg.CALLBACKS.CHECKPOINT_DIR,"core_semantic.log"), mode='w'))
+    # if not os.path.exists(cfg.CALLBACKS.CHECKPOINT_DIR):
+    #     os.makedirs(cfg.CALLBACKS.CHECKPOINT_DIR)
+    # logger.addHandler(logging.FileHandler(
+    #     os.path.join(cfg.CALLBACKS.CHECKPOINT_DIR,"core_semantic.log"), mode='w'))
     # with open(args.config) as file:
     #     logger.info(file.read())
     # Initialise Custom storage to avoid error when using detectron 2
@@ -41,8 +44,8 @@ def train(args):
 
     #Get dataloaders
     if cfg.DATASET_TYPE == "vkitti2":
-        train_loader, valid_loader, _ = get_dataloaders(cfg)
-
+        datamodule = VkittiDataModule(cfg)
+    
     # Create model or load a checkpoint
     if os.path.exists(cfg.CHECKPOINT_PATH_TRAINING):
         print('""""""""""""""""""""""""""""""""""""""""""""""')
@@ -69,13 +72,13 @@ def train(args):
 
     lr_monitor = LearningRateMonitor(logging_interval='epoch')
 
-    tb_logger = pl_loggers.TensorBoardLogger("tb_logs", name="effps_semantic")
+    tb_logger = pl_loggers.TensorBoardLogger("tb_logs_3", name="effps_semantic_lr=0.006")
     # Create a pytorch lighting trainer
     trainer = pl.Trainer(
         # weights_summary='full',
         logger=tb_logger,
         auto_lr_find=args.tune,
-        log_every_n_steps=np.floor(len(train_loader)/(cfg.BATCH_SIZE*torch.cuda.device_count())) -1,
+        log_every_n_steps=np.floor(len(datamodule.train_dataloader())/(cfg.BATCH_SIZE*torch.cuda.device_count())) -1,
         devices=1 if args.tune else list(range(torch.cuda.device_count())),
         strategy=None if args.tune else "ddp",
         accelerator='gpu',
@@ -89,7 +92,7 @@ def train(args):
     )
     logger.addHandler(logging.StreamHandler())
     if args.tune:
-        lr_finder = trainer.tuner.lr_find(efficientps, train_loader, valid_loader, min_lr=1e-5, max_lr=0.1, num_training=1000)
+        lr_finder = trainer.tuner.lr_find(efficientps, datamodule, min_lr=1e-4, max_lr=0.1, num_training=100)
         print("LR found:", lr_finder.suggestion())
     else:
-        trainer.fit(efficientps, train_loader, val_dataloaders=valid_loader)
+        trainer.fit(efficientps, datamodule)

@@ -88,7 +88,7 @@ def train(args):
     lr_monitor = LearningRateMonitor(logging_interval='epoch')
 
     #logger
-    tb_logger = pl_loggers.TensorBoardLogger("tb_logs_2", name="maskrcnn_vkitti_best_mask_all_samples")
+    tb_logger = pl_loggers.TensorBoardLogger("tb_logs_3", name="maskrcnn_vkitti_all")
     # Create a pytorch lighting trainer
     trainer = pl.Trainer(
         # weights_summary='full',
@@ -99,7 +99,7 @@ def train(args):
         strategy=None if args.tune else "ddp",
         accelerator='gpu',
         num_sanity_val_steps=0,
-        # fast_dev_run=cfg.SOLVER.FAST_DEV_RUN if args.fast_dev else False,
+        fast_dev_run=cfg.SOLVER.FAST_DEV_RUN if args.fast_dev else False,
         callbacks=[early_stopping, checkpoint, lr_monitor],
         # precision=cfg.PRECISION,
         resume_from_checkpoint=cfg.CHECKPOINT_PATH_TRAINING,
