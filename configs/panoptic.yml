@@ -54,7 +54,7 @@ INPUT:
   MIN_SIZE_TRAIN: (200,)
   MIN_SIZE_TEST: 200
 
-BATCH_SIZE: 4
+BATCH_SIZE: 3
 NUM_CLASS: 15
 MODEL_CUSTOM:
   BACKBONE:
@@ -84,6 +84,9 @@ SOLVER:
   # BASE_LR_SEMANTIC: 0.0933254300796991
   BASE_LR_SEMANTIC: 0.006
 
+  #Pan Depth
+  BASE_LR_PAN_DEPTH: 0.001
+
 # CHECKPOINT_PATH_TRAINING: "tb_logs_3/effps_semantic/version_0/checkpoints/last.ckpt"
 CHECKPOINT_PATH_TRAINING: ""
 # ckp semantic
@@ -97,7 +100,7 @@ DATASET_TYPE: "vkitti2"
 
 VKITTI_DATASET:
   STUFF_CLASSES: 12
-  MAX_SAMPLES: 128 #Number of training samples, null for all 
+  MAX_SAMPLES: null #Number of training samples, null for all 
   SPLIT_DATASET: True
   SPLITS: [0.80, 0.15, 0.05]
   SHUFFLE: True
@@ -142,7 +145,7 @@ VKITTI_DATASET:
     COCO_PANOPTIC_ANNOTATION: "kitti_coco_panoptic.json"
     TWO_CH_IMAGE_JSON: "kitti_2ch_panoptic.json"
     VALID_JSON: "kitti_coco_panoptic_valid.json"
-    VALID_PRED_DIR: "preds_valid_1"
+    VALID_PRED_DIR: "preds_valid"
     PRED_DIR: "preds"
     PRED_DIR_SEMANTIC: "preds_semantic"
     PRED_DIR_INSTANCE: "preds_instance_best_mask"

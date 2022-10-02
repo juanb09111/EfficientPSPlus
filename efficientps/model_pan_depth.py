@@ -11,7 +11,11 @@ from .depth_head import DepthHead
 from .refine_head import RefineHead
 from .instance_head import InstanceHead
 from .panoptic_segmentation_module import scale_resize_pad_masks, check_bbox_size
-
+from .panoptic_segmentation_module import panoptic_segmentation_module
+from .panoptic_metrics import generate_pred_panoptic
+from .panoptic_predictions import panoptic_predictions
+from panopticapi.evaluation import pq_compute
+import os.path
 
 class Pan_Depth(pl.LightningModule):
     """
@@ -47,7 +51,7 @@ class Pan_Depth(pl.LightningModule):
 
         self.valid_acc_depth = MeanSquaredError(squared=False)
         self.valid_acc_sem = JaccardIndex(cfg.NUM_CLASS)
-        self.valid_acc_bbx = MeanAveragePrecision(class_metrics=True)
+        # self.valid_acc_bbx = MeanAveragePrecision(class_metrics=True)
         self.obj_categories=categories
     
 
@@ -84,7 +88,7 @@ class Pan_Depth(pl.LightningModule):
         k_nn_indices = inputs['k_nn_indices']
         sparse_depth = inputs['sparse_depth']
         sparse_depth_gt = inputs['sparse_depth_gt']
-        depth_full = inputs['depth_full']
+        # depth_full = inputs['depth_full']
 
         # Feature extraction
         features = self.backbone.extract_endpoints(img)
@@ -153,58 +157,113 @@ class Pan_Depth(pl.LightningModule):
 
         # # Instance
 
-        target = [dict(
-                boxes=instance.get("gt_boxes").tensor,
-                labels=instance.get("gt_classes"),
-                masks=instance.get("gt_masks").tensor
-            ) for instance in batch["instance"]]
+        # target = [dict(
+        #         boxes=instance.get("gt_boxes").tensor,
+        #         labels=instance.get("gt_classes"),
+        #         masks=instance.get("gt_masks").tensor
+        #     ) for instance in batch["instance"]]
         
-        if predictions["instance"] != None:       
+        # if predictions["instance"] != None:       
             
-            instances = [check_bbox_size(instance) for instance in predictions["instance"]]
-            preds = [dict(
-                boxes=instance.get("pred_boxes").tensor,
-                labels=instance.get("pred_classes"),
-                masks=scale_resize_pad_masks(instance).to(torch.bool),
-                scores=instance.get("scores")
-            ) for instance in instances]
+        #     instances = [check_bbox_size(instance) for instance in predictions["instance"]]
+        #     preds = [dict(
+        #         boxes=instance.get("pred_boxes").tensor,
+        #         labels=instance.get("pred_classes"),
+        #         masks=scale_resize_pad_masks(instance).to(torch.bool),
+        #         scores=instance.get("scores")
+        #     ) for instance in instances]
             
-        else:
-            preds = [dict(
-                boxes=torch.zeros((0, 4), dtype=torch.float).to(self.device),
-                labels=torch.zeros((0), dtype=torch.long).to(self.device),
-                masks=torch.zeros((0), dtype=torch.bool).to(self.device),
-                scores=torch.zeros((0), dtype=torch.float).to(self.device)
-            ) for _ in batch["instance"]]
+        # else:
+        #     preds = [dict(
+        #         boxes=torch.zeros((0, 4), dtype=torch.float).to(self.device),
+        #         labels=torch.zeros((0), dtype=torch.long).to(self.device),
+        #         masks=torch.zeros((0), dtype=torch.bool).to(self.device),
+        #         scores=torch.zeros((0), dtype=torch.float).to(self.device)
+        #     ) for _ in batch["instance"]]
         
-        # Metric
-        # self.valid_acc_bbx(preds, target)
-        # self.log_dict(self.valid_acc_bbx, on_step=False, on_epoch=True, sync_dist=True)
-        self.valid_acc_bbx.update(preds, target)
+        # # Metric
+        # # self.valid_acc_bbx(preds, target)
+        # # self.log_dict(self.valid_acc_bbx, on_step=False, on_epoch=True, sync_dist=True)
+        # self.valid_acc_bbx.update(preds, target)
 
-    def validation_epoch_end(self, validation_step_outputs):
+        #Panoptic
+        panoptic_result = panoptic_segmentation_module(self.cfg,
+            predictions,
+            self.device)
+
+        return {
+            'panoptic': panoptic_result,
+            'image_id': batch['image_id']
+        }
+
+    def validation_epoch_end(self, outputs):
         
-        mAPs = {"val_" + k: v for k, v in self.valid_acc_bbx.compute().items()}
-        # self.print(mAPs)
-        mAPs_per_class = mAPs.pop("val_map_per_class")
-        mARs_per_class = mAPs.pop("val_mar_100_per_class")
+         # BBoxes
+        # mAPs = {"val_" + k: v for k, v in self.valid_acc_bbx.compute().items()}
+        # # print(mAPs)
+        # mAPs_per_class = mAPs.pop("val_map_per_class")
+        # mARs_per_class = mAPs.pop("val_mar_100_per_class")
+        # self.log_dict(mAPs, sync_dist=True)
+        # self.log_dict(
+        #     {
+        #         f"val_map_{label}": value
+        #         for label, value in zip(self.obj_categories.values(), mAPs_per_class)
+        #     },
+        #     sync_dist=True,
+        # )
+        # self.log_dict(
+        #     {
+        #         f"val_mar_100_{label}": value
+        #         for label, value in zip(self.obj_categories.values(), mARs_per_class)
+        #     },
+        #     sync_dist=True,
+        # )
+        # self.valid_acc_bbx.reset()
+
+        # print(outputs)
+        gathered_results = self.all_gather(outputs)
+        # print("gathered_results", gathered_results)
+        if self.local_rank == 0:
+
+            for gr in gathered_results:
+                #Flatten results
+                gr["image_id"] = [im_id for sublist in gr["image_id"] for im_id in sublist]
+                gr["panoptic"] = [pan for sublist in gr["panoptic"] for pan in sublist]
+                
+
+            #1. convert coco gt to panoptic gt
+            #2. Detections to coco format
+            #3. Detections coco format to panoptic format
+            #4. Evaluate
+            # Create and save all predictions files
+            generate_pred_panoptic(self.cfg, gathered_results)
+
+            # Compute PQ metric with panpticapi
+            pq_res = pq_compute(
+                gt_json_file= os.path.join(
+                    self.cfg.VKITTI_DATASET.DATASET_PATH.ROOT,
+                    self.cfg.VKITTI_DATASET.DATASET_PATH.VALID_JSON),
+                pred_json_file= os.path.join(
+                    self.cfg.VKITTI_DATASET.DATASET_PATH.ROOT,
+                    self.cfg.VKITTI_DATASET.DATASET_PATH.PRED_JSON),
+                gt_folder= os.path.join(self.cfg.VKITTI_DATASET.DATASET_PATH.ROOT),
+                pred_folder=os.path.join(
+                    self.cfg.VKITTI_DATASET.DATASET_PATH.ROOT,
+                    self.cfg.VKITTI_DATASET.DATASET_PATH.VALID_PRED_DIR)
+            )
+            
+            self.log("PQ", 100 * pq_res["All"]["pq"] * self.cfg.NUM_GPUS, sync_dist=True)
+            self.log("SQ", 100 * pq_res["All"]["sq"], rank_zero_only=True)
+            self.log("RQ", 100 * pq_res["All"]["rq"], rank_zero_only=True)
+            self.log("PQ_th", 100 * pq_res["Things"]["pq"], rank_zero_only=True)
+            self.log("SQ_th", 100 * pq_res["Things"]["sq"], rank_zero_only=True)
+            self.log("RQ_th", 100 * pq_res["Things"]["rq"], rank_zero_only=True)
+            self.log("PQ_st", 100 * pq_res["Stuff"]["pq"], rank_zero_only=True)
+            self.log("SQ_st", 100 * pq_res["Stuff"]["sq"], rank_zero_only=True)
+            self.log("RQ_st", 100 * pq_res["Stuff"]["rq"], rank_zero_only=True)
         
-        self.log_dict(mAPs, sync_dist=True)
-        self.log_dict(
-            {
-                f"val_map_{label}": value
-                for label, value in zip(self.obj_categories.values(), mAPs_per_class)
-            },
-            sync_dist=True,
-        )
-        self.log_dict(
-            {
-                f"val_mar_100_{label}": value
-                for label, value in zip(self.obj_categories.values(), mARs_per_class)
-            },
-            sync_dist=True,
-        )
-        self.valid_acc_bbx.reset()
+        else:
+            self.log("PQ", 0, sync_dist=True)
 
 
     # def predict_step(self, batch, batch_idx, dataloader_idx=0):
@@ -228,8 +287,10 @@ class Pan_Depth(pl.LightningModule):
     #     }
         
     
-    # def on_predict_epoch_end(self, results):
+    def on_predict_epoch_end(self, results):
     #     #Save Panoptic results
+        print("saving panoptic results")
+        panoptic_predictions(self.cfg, results[0])
     #     print("saving panoptic results")
     #     semantic_predictions(self.cfg, results[0])
         
@@ -252,7 +313,7 @@ class Pan_Depth(pl.LightningModule):
             'optimizer': self.optimizer,
             'lr_scheduler': ReduceLROnPlateau(self.optimizer,
                                               mode='min',
-                                              patience=10,
+                                              patience=5,
                                               factor=0.1,
                                               min_lr=self.cfg.SOLVER.BASE_LR_PAN_DEPTH*1e-4,
                                               verbose=True),
@@ -261,9 +322,9 @@ class Pan_Depth(pl.LightningModule):
 
     def optimizer_step(self, current_epoch, batch_nb, optimizer, optimizer_idx, closure, on_tpu=False, using_native_amp=False, using_lbfgs=False):
         # warm up lr
-        if self.trainer.global_step < self.cfg.SOLVER.WARMUP_ITERS:
+        if self.trainer.global_step < self.cfg.SOLVER.WARMUP_ITERS*self.cfg.NUM_GPUS:
             lr_scale = min(1., float(self.trainer.global_step + 1) /
-                                    float(self.cfg.SOLVER.WARMUP_ITERS))
+                                    float(self.cfg.SOLVER.WARMUP_ITERS*self.cfg.NUM_GPUS))
             for pg in optimizer.param_groups:
                 pg['lr'] = lr_scale * self.learning_rate
 

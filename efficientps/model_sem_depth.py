@@ -185,9 +185,9 @@ class Semantic_Depth(pl.LightningModule):
 
     def optimizer_step(self, current_epoch, batch_nb, optimizer, optimizer_idx, closure, on_tpu=False, using_native_amp=False, using_lbfgs=False):
         # warm up lr
-        if self.trainer.global_step < self.cfg.SOLVER.WARMUP_ITERS:
+        if self.trainer.global_step < self.cfg.SOLVER.WARMUP_ITERS*self.cfg.NUM_GPUS:
             lr_scale = min(1., float(self.trainer.global_step + 1) /
-                                    float(self.cfg.SOLVER.WARMUP_ITERS))
+                                    float(self.cfg.SOLVER.WARMUP_ITERS*self.cfg.NUM_GPUS))
             for pg in optimizer.param_groups:
                 pg['lr'] = lr_scale * self.cfg.SOLVER.BASE_LR_SEM_DEPTH
 

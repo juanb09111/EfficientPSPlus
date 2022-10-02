@@ -302,7 +302,7 @@ def get_train_transforms(cfg):
 
 
     custom_transforms.append(A.Resize(height=h_resize, width=w_resize))
-    custom_transforms.append(A.RandomCrop(width=w_crop, height=h_crop))
+    # custom_transforms.append(A.RandomCrop(width=w_crop, height=h_crop))
     custom_transforms.append(A.CenterCrop(width=w_ccrop, height=h_ccrop))
     custom_transforms.append(A.HorizontalFlip(p=cfg.VKITTI_DATASET.HFLIP))
     custom_transforms.append(A.Normalize(mean=cfg.VKITTI_DATASET.NORMALIZE.MEAN, std=cfg.VKITTI_DATASET.NORMALIZE.STD))
@@ -319,7 +319,6 @@ def get_val_transforms(cfg):
 
 
     custom_transforms.append(A.Resize(height=h_resize, width=w_resize))
-    custom_transforms.append(A.RandomCrop(width=w_crop, height=h_crop))
     custom_transforms.append(A.CenterCrop(width=w_ccrop, height=h_ccrop))
     custom_transforms.append(A.Normalize(mean=cfg.VKITTI_DATASET.NORMALIZE.MEAN, std=cfg.VKITTI_DATASET.NORMALIZE.STD))
     custom_transforms.append(ToTensorV2())
@@ -410,9 +409,9 @@ class VkittiDataModule(LightningDataModule):
         val_loader = torch.utils.data.DataLoader(
             val_dataset,
             batch_size=self.batch_size,
-            shuffle=True,
+            shuffle=False,
             pin_memory=True,
-            drop_last=True,
+            drop_last=False,
             num_workers=4,
             collate_fn=self.collate_fn_wrapper(val_dataset),
         )

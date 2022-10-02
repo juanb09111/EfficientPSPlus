@@ -1,10 +1,9 @@
 import os
 import torch
-from torch.optim.lr_scheduler import ReduceLROnPlateau, StepLR
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 import torch.nn.functional as F
 from .fpn import TwoWayFpn
 import pytorch_lightning as pl
-from pytorch_lightning.utilities import rank_zero_only
 from torchmetrics import JaccardIndex
 from torchmetrics.detection.mean_ap import MeanAveragePrecision
 from .backbone import generate_backbone_EfficientPS, output_feature_size
@@ -17,9 +16,6 @@ from .panoptic_metrics import generate_pred_panoptic
 from .panoptic_predictions import panoptic_predictions
 from panopticapi.evaluation import pq_compute
 import os.path
-import numpy as np
-# import cv2
-# import matplotlib.pyplot as plt
 
 class EffificientPS(pl.LightningModule):
     """
@@ -256,7 +252,7 @@ class EffificientPS(pl.LightningModule):
             'optimizer': self.optimizer,
             'lr_scheduler': ReduceLROnPlateau(self.optimizer,
                                               mode='max',
-                                              patience=10,
+                                              patience=5,
                                               factor=0.1,
                                               min_lr=self.cfg.SOLVER.BASE_LR*1e-4,
                                               verbose=True),
@@ -265,9 +261,9 @@ class EffificientPS(pl.LightningModule):
 
     def optimizer_step(self, current_epoch, batch_nb, optimizer, optimizer_idx, closure, on_tpu=False, using_native_amp=False, using_lbfgs=False):
         # warm up lr
-        if self.trainer.global_step < self.cfg.SOLVER.WARMUP_ITERS:
+        if self.trainer.global_step < self.cfg.SOLVER.WARMUP_ITERS*self.cfg.NUM_GPUS:
             lr_scale = min(1., float(self.trainer.global_step + 1) /
-                                    float(self.cfg.SOLVER.WARMUP_ITERS))
+                                    float(self.cfg.SOLVER.WARMUP_ITERS*self.cfg.NUM_GPUS))
             for pg in optimizer.param_groups:
                 pg['lr'] = lr_scale * self.cfg.SOLVER.BASE_LR
 
