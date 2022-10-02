@@ -78,7 +78,7 @@ def train(args):
         # weights_summary='full',
         logger=tb_logger,
         auto_lr_find=args.tune,
-        log_every_n_steps=np.floor(len(datamodule.train_dataloader())/(cfg.BATCH_SIZE*torch.cuda.device_count())) -1,
+        log_every_n_steps=np.floor(len(datamodule.val_dataloader())/(cfg.BATCH_SIZE*torch.cuda.device_count())) -1,
         devices=1 if args.tune else list(range(torch.cuda.device_count())),
         strategy=None if args.tune else "ddp",
         accelerator='gpu',

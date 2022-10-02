@@ -16,8 +16,11 @@ from detectron2.utils.events import _CURRENT_STORAGE_STACK, EventStorage
 
 from efficientps import Pan_Depth
 from utils.add_custom_params import add_custom_params
-from datasets.vkitti_depth_dataset import get_dataloaders
-from datasets.vkitti_cats import obj_categories
+from utils.dataloader_2_coco_panoptic import dataloader_2_coco_panoptic
+
+
+from datasets.vkitti_depth_datamodule import VkittiDataModule
+from datasets.vkitti_cats import obj_categories as vkitti_cats
 
 
 
@@ -31,19 +34,22 @@ def train(args):
     
     logging.getLogger("pytorch_lightning").setLevel(logging.INFO)
     logger = logging.getLogger("pytorch_lightning.core")
-    if not os.path.exists(cfg.CALLBACKS.CHECKPOINT_DIR):
-        os.makedirs(cfg.CALLBACKS.CHECKPOINT_DIR)
-    logger.addHandler(logging.FileHandler(
-        os.path.join(cfg.CALLBACKS.CHECKPOINT_DIR,"core_pan_depth.log"), mode='w'))
-    with open(args.config) as file:
-        logger.info(file.read())
-    # Initialise Custom storage to avoid error when using detectron 2
+    # if not os.path.exists(cfg.CALLBACKS.CHECKPOINT_DIR):
+    #     os.makedirs(cfg.CALLBACKS.CHECKPOINT_DIR)
+    # logger.addHandler(logging.FileHandler(
+    #     os.path.join(cfg.CALLBACKS.CHECKPOINT_DIR,"core_pan_depth.log"), mode='w'))
+    # with open(args.config) as file:
+    #     logger.info(file.read())
+    # # Initialise Custom storage to avoid error when using detectron 2
     _CURRENT_STORAGE_STACK.append(EventStorage())
 
     #Get dataloaders
     if cfg.DATASET_TYPE == "vkitti2":
-        train_loader, valid_loader, _ = get_dataloaders(cfg)
-        categories = obj_categories
+        datamodule = VkittiDataModule(cfg)
+        obj_categories = vkitti_cats
+
+    print("Converting dataloader to coco_panoptic json")
+    dataloader_2_coco_panoptic(cfg, datamodule.val_dataloader())
 
     # Create model or load a checkpoint
     if os.path.exists(cfg.CHECKPOINT_PATH_TRAINING):
@@ -51,12 +57,12 @@ def train(args):
         print("Loading model from {}".format(cfg.CHECKPOINT_PATH_TRAINING))
         print('""""""""""""""""""""""""""""""""""""""""""""""')
         efficientps = Pan_Depth.load_from_checkpoint(cfg=cfg,
-            checkpoint_path=cfg.CHECKPOINT_PATH_TRAINING, categories=categories)
+            checkpoint_path=cfg.CHECKPOINT_PATH_TRAINING, categories=obj_categories)
     else:
         print('""""""""""""""""""""""""""""""""""""""""""""""')
         print("Creating a new model")
         print('""""""""""""""""""""""""""""""""""""""""""""""')
-        efficientps = Pan_Depth(cfg, categories=categories)
+        efficientps = Pan_Depth(cfg, categories=obj_categories)
         cfg.CHECKPOINT_PATH_TRAINING = None
 
     #print lr
@@ -74,13 +80,13 @@ def train(args):
     lr_monitor = LearningRateMonitor(logging_interval='epoch')
 
     #logger
-    tb_logger = pl_loggers.TensorBoardLogger("tb_logs_2", name="effps_depth_no_depth_2")
+    tb_logger = pl_loggers.TensorBoardLogger("tb_logs_4", name="effps_pan_depth")
     # Create a pytorch lighting trainer
     trainer = pl.Trainer(
         # weights_summary='full',
         logger=tb_logger,
         auto_lr_find=args.tune,
-        log_every_n_steps=np.floor(len(train_loader)/(cfg.BATCH_SIZE*torch.cuda.device_count())) -1,
+        log_every_n_steps=np.floor(len(datamodule.val_dataloader())/(cfg.BATCH_SIZE*torch.cuda.device_count())) -1,
         devices=1 if args.tune else list(range(torch.cuda.device_count())),
         strategy=None if args.tune else "ddp",
         accelerator='gpu',
@@ -90,11 +96,11 @@ def train(args):
         # precision=cfg.PRECISION,
         resume_from_checkpoint=cfg.CHECKPOINT_PATH_TRAINING,
         # gradient_clip_val=0,
-        accumulate_grad_batches=cfg.SOLVER.ACCUMULATE_GRAD
+        # accumulate_grad_batches=cfg.SOLVER.ACCUMULATE_GRAD
     )
     logger.addHandler(logging.StreamHandler())
     if args.tune:
-        lr_finder = trainer.tuner.lr_find(efficientps, train_loader, valid_loader, min_lr=1e-4, max_lr=0.1, num_training=100)
+        lr_finder = trainer.tuner.lr_find(efficientps, datamodule, min_lr=1e-4, max_lr=0.1, num_training=100)
         print("LR found:", lr_finder.suggestion())
     else:
-        trainer.fit(efficientps, train_loader, val_dataloaders=valid_loader)
+        trainer.fit(efficientps, datamodule)

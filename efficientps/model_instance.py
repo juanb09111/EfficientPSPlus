@@ -105,6 +105,7 @@ class Instance(pl.LightningModule):
         
         # BBoxes
         mAPs = {"val_" + k: v for k, v in self.valid_acc_bbx.compute().items()}
+        # print(mAPs)
         mAPs_per_class = mAPs.pop("val_map_per_class")
         mARs_per_class = mAPs.pop("val_mar_100_per_class")
         self.log_dict(mAPs, sync_dist=True)
@@ -197,9 +198,9 @@ class Instance(pl.LightningModule):
 
     def optimizer_step(self, current_epoch, batch_nb, optimizer, optimizer_idx, closure, on_tpu=False, using_native_amp=False, using_lbfgs=False):
         # warm up lr
-        if self.trainer.global_step < self.cfg.SOLVER.WARMUP_ITERS:
+        if self.trainer.global_step < self.cfg.SOLVER.WARMUP_ITERS*self.cfg.NUM_GPUS:
             lr_scale = min(1., float(self.trainer.global_step + 1) /
-                                    float(self.cfg.SOLVER.WARMUP_ITERS))
+                                    float(self.cfg.SOLVER.WARMUP_ITERS*self.cfg.NUM_GPUS))
             for pg in optimizer.param_groups:
                 pg['lr'] = lr_scale * self.cfg.SOLVER.BASE_LR_INSTANCE
 
