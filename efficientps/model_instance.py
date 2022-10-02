@@ -32,7 +32,7 @@ class Instance(pl.LightningModule):
             output_feature_size[cfg.MODEL_CUSTOM.BACKBONE.EFFICIENTNET_ID])
         self.instance_head = InstanceHead(cfg)
         self.valid_acc_bbx = MeanAveragePrecision(class_metrics=True)
-        self.valid_acc_sgm = MeanAveragePrecision(class_metrics=True, iou_type="segm")
+        # self.valid_acc_sgm = MeanAveragePrecision(class_metrics=True, iou_type="segm")
         self.obj_categories=categories
         
         # self.epoch = 0
@@ -99,7 +99,7 @@ class Instance(pl.LightningModule):
             ) for _ in batch["instance"]]
         
         self.valid_acc_bbx.update(preds, target)
-        self.valid_acc_sgm.update(preds, target)
+        # self.valid_acc_sgm.update(preds, target)
     
     def validation_epoch_end(self, validation_step_outputs):
         
@@ -126,25 +126,25 @@ class Instance(pl.LightningModule):
 
         # Masks
 
-        mAPs_masks = {"val_masks_" + k: v for k, v in self.valid_acc_sgm.compute().items()}
-        mAPs_per_class = mAPs_masks.pop("val_masks_map_per_class")
-        mARs_per_class = mAPs_masks.pop("val_masks_mar_100_per_class")
-        self.log_dict(mAPs_masks, sync_dist=True)
-        self.log_dict(
-            {
-                f"val_map_mask_{label}": value
-                for label, value in zip(self.obj_categories.values(), mAPs_per_class)
-            },
-            sync_dist=True,
-        )
-        self.log_dict(
-            {
-                f"val_mar_100_mask_{label}": value
-                for label, value in zip(self.obj_categories.values(), mARs_per_class)
-            },
-            sync_dist=True,
-        )
-        self.valid_acc_sgm.reset()
+        # mAPs_masks = {"val_masks_" + k: v for k, v in self.valid_acc_sgm.compute().items()}
+        # mAPs_per_class = mAPs_masks.pop("val_masks_map_per_class")
+        # mARs_per_class = mAPs_masks.pop("val_masks_mar_100_per_class")
+        # self.log_dict(mAPs_masks, sync_dist=True)
+        # self.log_dict(
+        #     {
+        #         f"val_map_mask_{label}": value
+        #         for label, value in zip(self.obj_categories.values(), mAPs_per_class)
+        #     },
+        #     sync_dist=True,
+        # )
+        # self.log_dict(
+        #     {
+        #         f"val_mar_100_mask_{label}": value
+        #         for label, value in zip(self.obj_categories.values(), mARs_per_class)
+        #     },
+        #     sync_dist=True,
+        # )
+        # self.valid_acc_sgm.reset()
 
 
     def predict_step(self, batch, batch_idx, dataloader_idx=0):
