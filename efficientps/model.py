@@ -1,14 +1,18 @@
 import os
 import torch
 from torch.optim.lr_scheduler import ReduceLROnPlateau, StepLR
+import torch.nn.functional as F
 from .fpn import TwoWayFpn
 import pytorch_lightning as pl
 from pytorch_lightning.utilities import rank_zero_only
+from torchmetrics import JaccardIndex
+from torchmetrics.detection.mean_ap import MeanAveragePrecision
 from .backbone import generate_backbone_EfficientPS, output_feature_size
 from .semantic_head import SemanticHead
 from .instance_head import InstanceHead
 # from .visualize_pred import visualize_pred
 from .panoptic_segmentation_module import panoptic_segmentation_module
+from .panoptic_segmentation_module import scale_resize_pad_masks, check_bbox_size
 from .panoptic_metrics import generate_pred_panoptic
 from .panoptic_predictions import panoptic_predictions
 from panopticapi.evaluation import pq_compute
@@ -23,7 +27,7 @@ class EffificientPS(pl.LightningModule):
     Here pytorch lightningis used https://pytorch-lightning.readthedocs.io/en/latest/
     """
 
-    def __init__(self, cfg):
+    def __init__(self, cfg, categories):
         """
         Args:
         - cfg (Config) : Config object from detectron2
@@ -37,6 +41,10 @@ class EffificientPS(pl.LightningModule):
             output_feature_size[cfg.MODEL_CUSTOM.BACKBONE.EFFICIENTNET_ID])
         self.semantic_head = SemanticHead(cfg.NUM_CLASS)
         self.instance_head = InstanceHead(cfg)
+
+        self.valid_acc = JaccardIndex(cfg.NUM_CLASS)
+        # self.valid_acc_bbx = MeanAveragePrecision(class_metrics=True)
+        self.obj_categories=categories
         
         # self.epoch = 0
     
@@ -54,8 +62,10 @@ class EffificientPS(pl.LightningModule):
         _, loss = self.shared_step(batch)
         
         # Add losses to logs
-        [self.log(k, v, batch_size=self.cfg.BATCH_SIZE) for k,v in loss.items()]
-        self.log('train_loss', sum(loss.values()), batch_size=self.cfg.BATCH_SIZE)
+        [self.log("{}_step".format(k), v, batch_size=self.cfg.BATCH_SIZE, on_step=True, on_epoch=False, sync_dist=False) for k,v in loss.items()]
+        [self.log(k, v, batch_size=self.cfg.BATCH_SIZE, on_step=False, on_epoch=True, sync_dist=True) for k,v in loss.items()]
+        self.log('train_loss', sum(loss.values()), batch_size=self.cfg.BATCH_SIZE, on_step=True, on_epoch=False, sync_dist=False)
+        self.log('train_loss_epoch', sum(loss.values()), batch_size=self.cfg.BATCH_SIZE, on_step=False, on_epoch=True, sync_dist=True)
         return {'loss': sum(loss.values())}
 
     def shared_step(self, inputs):
@@ -78,13 +88,47 @@ class EffificientPS(pl.LightningModule):
     def validation_step(self, batch, batch_idx):
 
         
-        predictions, loss = self.shared_step(batch)
+        predictions, _ = self.shared_step(batch)
+        
+        #Semantic
+        preds = F.softmax(predictions["semantic"], dim=1)
+        self.valid_acc(preds, batch["semantic"])
+        self.log('IoU', self.valid_acc, on_step=False, on_epoch=True)
+
+        # Instance
+        
+        # target = [dict(
+        #         boxes=instance.get("gt_boxes").tensor,
+        #         labels=instance.get("gt_classes"),
+        #         masks=instance.get("gt_masks").tensor
+        #     ) for instance in batch["instance"]]
+        
+        # if predictions["instance"] != None:       
+            
+        #     instances = [check_bbox_size(instance) for instance in predictions["instance"]]
+        #     preds = [dict(
+        #         boxes=instance.get("pred_boxes").tensor,
+        #         labels=instance.get("pred_classes"),
+        #         masks=scale_resize_pad_masks(instance).to(torch.bool),
+        #         scores=instance.get("scores")
+        #     ) for instance in instances]
+            
+        # else:
+        #     preds = [dict(
+        #         boxes=torch.zeros((0, 4), dtype=torch.float).to(self.device),
+        #         labels=torch.zeros((0), dtype=torch.long).to(self.device),
+        #         masks=torch.zeros((0), dtype=torch.bool).to(self.device),
+        #         scores=torch.zeros((0), dtype=torch.float).to(self.device)
+        #     ) for _ in batch["instance"]]
+        
+        # self.valid_acc_bbx.update(preds, target)
+
+        #Panoptic
         panoptic_result = panoptic_segmentation_module(self.cfg,
             predictions,
             self.device)
-        
-        self.log("semantic_loss", loss["semantic_loss"], batch_size=self.cfg.BATCH_SIZE, sync_dist=True)
-        self.log("val_loss", sum(loss.values()), batch_size=self.cfg.BATCH_SIZE, sync_dist=True)
+        # print(panoptic_result.shape)
+        # print(batch['image_id'])
         return {
             'panoptic': panoptic_result,
             'image_id': batch['image_id']
@@ -92,6 +136,29 @@ class EffificientPS(pl.LightningModule):
         
     # @rank_zero_only
     def validation_epoch_end(self, outputs):
+
+         # BBoxes
+        # mAPs = {"val_" + k: v for k, v in self.valid_acc_bbx.compute().items()}
+        # # print(mAPs)
+        # mAPs_per_class = mAPs.pop("val_map_per_class")
+        # mARs_per_class = mAPs.pop("val_mar_100_per_class")
+        # self.log_dict(mAPs, sync_dist=True)
+        # self.log_dict(
+        #     {
+        #         f"val_map_{label}": value
+        #         for label, value in zip(self.obj_categories.values(), mAPs_per_class)
+        #     },
+        #     sync_dist=True,
+        # )
+        # self.log_dict(
+        #     {
+        #         f"val_mar_100_{label}": value
+        #         for label, value in zip(self.obj_categories.values(), mARs_per_class)
+        #     },
+        #     sync_dist=True,
+        # )
+        # self.valid_acc_bbx.reset()
+
         # print(outputs)
         gathered_results = self.all_gather(outputs)
         # print("gathered_results", gathered_results)

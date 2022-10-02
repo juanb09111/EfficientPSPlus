@@ -228,7 +228,7 @@ def create_canvas_thing(cfg, inter_preds, instance):
     # Retrieve classes of all instance prediction (sorted by detectron2)
     classes = instance.pred_classes
     # instance_train_id_to_eval_id = [24, 25, 26, 27, 28, 31, 32, 33, 0]
-    instance_train_id_to_eval_id = [12, 13, 14, 0]
+    instance_train_id_to_eval_id = [12, 13, 14]
     # Used to label each instance incrementally
     track_of_instance = {}
     # Loop on instance prediction
@@ -257,7 +257,8 @@ def compute_output_only_semantic(cfg, semantic):
     """
     # semantic_train_id_to_eval_id = [7, 8, 11, 12, 13, 17, 19, 20, 21, 22,
     #                             23, 24, 25, 26, 27, 28, 31, 32, 33, 0]
-    semantic_train_id_to_eval_id = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+    # semantic_train_id_to_eval_id = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+    semantic_train_id_to_eval_id = [15, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
     if len(semantic.shape) == 3:
         semantic_output = torch.argmax(semantic, dim=0)
     else:
@@ -267,7 +268,7 @@ def compute_output_only_semantic(cfg, semantic):
     for train_id in reversed(torch.unique(semantic_output)):
         mask = torch.where(semantic_output == train_id)
         # Create panoptic ids for instance thing or stuff
-        if train_id > cfg.VKITTI_DATASET.STUFF_CLASSES:
+        if train_id >= cfg.VKITTI_DATASET.STUFF_CLASSES:  #12
             semantic_output[mask] = semantic_train_id_to_eval_id[train_id] * 1000
         else:
             semantic_output[mask] = semantic_train_id_to_eval_id[train_id]
@@ -288,7 +289,7 @@ def add_stuff_from_semantic(cfg, canvas, semantic):
     # Link between semantic and stuff classes in semantic prediction instance
     # classes have higher class training values
     # stuff_train_id_to_eval_id = [7, 8, 11, 12, 13, 17, 19, 20, 21, 22, 23]
-    stuff_train_id_to_eval_id = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+    stuff_train_id_to_eval_id = [15, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
     semantic_output = torch.argmax(F.softmax(semantic, dim=0), dim=0)
     # Reverse to avoid overwrite classes information
     for train_id in reversed(torch.unique(semantic_output)):
