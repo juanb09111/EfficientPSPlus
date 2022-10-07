@@ -101,8 +101,6 @@ DATASET_TYPE: "vkitti2"
 VKITTI_DATASET:
   STUFF_CLASSES: 12
   MAX_SAMPLES: null #Number of training samples, null for all 
-  SPLIT_DATASET: True
-  SPLITS: [0.80, 0.15, 0.05]
   SHUFFLE: True
   NORMALIZE:
     MEAN: (0.485, 0.456, 0.406)
@@ -127,7 +125,7 @@ VKITTI_DATASET:
   DEPTH:
     K: 3
     SPARSITY_TRAINING: 0.05
-    SPARSITY_EVAL: 0.25
+    SPARSITY_EVAL: 0.20
     # MAX_DEPTH_POINTS: 20000 # Max val for HxW = 360x1200
     MAX_DEPTH_POINTS: 8000 # Max val for HxW = 200x1000
     MAX_DEPTH: 50
@@ -153,3 +151,6 @@ VKITTI_DATASET:
     PRED_JSON_SEMANTIC: "vkitti2_semantic_predictions.json"
     PRED_JSON_INSTANCE: "vkitti2_instance_predictions.json"
   EXCLUDE: ["15-deg-left", "15-deg-right", "30-deg-left", "30-deg-right"]
+  TRAINING_SCENES: ["Scene01", "Scene06", "Scene20"]
+  EVAL_SCENES: ["Scene18"] # 339 unique samples
+  TEST_SCENES: ["Scene02"] # 233 unique samples

@@ -1,4 +1,4 @@
-# VERSION: 2
+VERSION: 2
 MODEL:
   MASK_ON: True
   ANCHOR_GENERATOR:
@@ -54,8 +54,7 @@ INPUT:
   MIN_SIZE_TRAIN: (200,)
   MIN_SIZE_TEST: 200
 
-BATCH_SIZE: 3
-NUM_CLASS: 15
+BATCH_SIZE: 4
 MODEL_CUSTOM:
   BACKBONE:
     EFFICIENTNET_ID: 5 # Id of the EfficienNet model
@@ -64,11 +63,7 @@ MODEL_CUSTOM:
 SOLVER:
   NAME: "Adam" # Adam or SGD
 
-  WARMUP_ITERS: 1000 # Set to 0 for no warmup
-
-  # ACCUMULATE_GRAD: 2 # Number of accumulated epochs for accumulated gradient
-  
-  FAST_DEV_RUN: 2
+  WARMUP_ITERS: 4000 # Set to 0 for no warmup
 
   # Semantic and depth learning rates---------------
   BASE_LR_SEM_DEPTH: 0.0004570881896148751 #lr finder
@@ -80,18 +75,7 @@ SOLVER:
   # Instance learning rate
   BASE_LR_INSTANCE: 0.02
 
-  #Semantic
-  # BASE_LR_SEMANTIC: 0.0933254300796991
-  BASE_LR_SEMANTIC: 0.006
-
-  #Pan Depth
-  BASE_LR_PAN_DEPTH: 0.001
-
-# CHECKPOINT_PATH_TRAINING: "tb_logs_3/effps_semantic/version_0/checkpoints/last.ckpt"
 CHECKPOINT_PATH_TRAINING: ""
-# ckp semantic
-# CHECKPOINT_PATH_TRAINING: "tb_logs_3/effps_semantic/version_2/checkpoints/last.ckpt"
-# CHECKPOINT_PATH_TRAINING: "tb_logs_3/effps_semantic/version_1/checkpoints/epoch=11-step=30612.ckpt"
 # CHECKPOINT_PATH_TRAINING: "tb_logs_2/maskrcnn_vkitti_cls3_4_gpus_warmup4k_best_Adam/version_0/checkpoints/last.ckpt"
 # CHECKPOINT_PATH_INFERENCE: "'tb_logs_2/maskrcnn/version_38/checkpoints/epoch=126-step=2032.ckpt'"
 CHECKPOINT_PATH_INFERENCE: "tb_logs_2/maskrcnn_vkitti_best_mask/version_1/checkpoints/epoch=204-step=5125.ckpt"
@@ -100,7 +84,7 @@ DATASET_TYPE: "vkitti2"
 
 VKITTI_DATASET:
   STUFF_CLASSES: 12
-  MAX_SAMPLES: null #Number of training samples, null for all
+  MAX_SAMPLES: 128 #Number of training samples, null for all
   SHUFFLE: True
   NORMALIZE:
     MEAN: (0.485, 0.456, 0.406)
@@ -112,10 +96,8 @@ VKITTI_DATASET:
     HEIGHT: 375
     WIDTH: 1242
   RESIZE:
-    # HEIGHT: 375
-    # WIDTH: 1242
-    HEIGHT: 200
-    WIDTH: 1000
+    HEIGHT: 375
+    WIDTH: 1242
   CENTER_CROP:
     # HEIGHT: 360
     # WIDTH: 1200

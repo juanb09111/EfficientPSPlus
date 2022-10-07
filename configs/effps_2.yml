@@ -31,8 +31,8 @@ MODEL:
     # PROPOSAL_APPEND_GT:
   #   IOU_THRESHOLDS: [0.5]
   #   # IOU_LABELS:
-    SCORE_THRESH_TEST: 0.5 # First step of panoptic fusion module
-    NMS_THRESH_TEST: 0.5 # Second step of panoptic fusion module
+    # SCORE_THRESH_TEST: 0.5 # First step of panoptic fusion module
+    # NMS_THRESH_TEST: 0.5 # Second step of panoptic fusion module
   # ROI_BOX_HEAD:
     # POOLER_RESOLUTION: 28
   #   POOLER_SAMPLING_RATIO: 2 # (maybe put to 2) The `sampling_ratio` parameter for the ROIAlign op.
@@ -64,7 +64,7 @@ MODEL_CUSTOM:
 SOLVER:
   NAME: "Adam" # Adam or SGD
 
-  WARMUP_ITERS: 4000 # Set to 0 for no warmup
+  WARMUP_ITERS: 1000 # Set to 0 for no warmup
 
   # ACCUMULATE_GRAD: 2 # Number of accumulated epochs for accumulated gradient
   
@@ -87,6 +87,7 @@ SOLVER:
 # CHECKPOINT_PATH_TRAINING: "tb_logs_3/effps_semantic/version_0/checkpoints/last.ckpt"
 CHECKPOINT_PATH_TRAINING: ""
 # ckp semantic
+# CHECKPOINT_PATH_TRAINING: "tb_logs_3/effps_semantic/version_2/checkpoints/last.ckpt"
 # CHECKPOINT_PATH_TRAINING: "tb_logs_3/effps_semantic/version_1/checkpoints/epoch=11-step=30612.ckpt"
 # CHECKPOINT_PATH_TRAINING: "tb_logs_2/maskrcnn_vkitti_cls3_4_gpus_warmup4k_best_Adam/version_0/checkpoints/last.ckpt"
 # CHECKPOINT_PATH_INFERENCE: "'tb_logs_2/maskrcnn/version_38/checkpoints/epoch=126-step=2032.ckpt'"
@@ -96,9 +97,7 @@ DATASET_TYPE: "vkitti2"
 
 VKITTI_DATASET:
   STUFF_CLASSES: 12
-  MAX_SAMPLES: null #Number of training samples, null for all 
-  SPLIT_DATASET: True
-  SPLITS: [0.80, 0.15, 0.05]
+  MAX_SAMPLES: 48 #Number of training samples, null for all 
   SHUFFLE: True
   NORMALIZE:
     MEAN: (0.485, 0.456, 0.406)
@@ -121,7 +120,7 @@ VKITTI_DATASET:
   DEPTH:
     K: 3
     SPARSITY_TRAINING: 0.05
-    SPARSITY_EVAL: 0.25
+    SPARSITY_EVAL: 0.20
     # MAX_DEPTH_POINTS: 20000 # Max val for HxW = 360x1200
     MAX_DEPTH_POINTS: 8000 # Max val for HxW = 200x1000
     MAX_DEPTH: 50
@@ -147,3 +146,6 @@ VKITTI_DATASET:
     PRED_JSON_SEMANTIC: "vkitti2_semantic_predictions.json"
     PRED_JSON_INSTANCE: "vkitti2_instance_predictions.json"
   EXCLUDE: ["15-deg-left", "15-deg-right", "30-deg-left", "30-deg-right"]
+  TRAINING_SCENES: ["Scene01", "Scene06", "Scene20"]
+  EVAL_SCENES: ["Scene18"] # 339 unique samples
+  TEST_SCENES: ["Scene02"] # 233 unique samples

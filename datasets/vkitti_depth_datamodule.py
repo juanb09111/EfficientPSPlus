@@ -25,7 +25,7 @@ from tqdm import tqdm
 torch.manual_seed(0)
 
 class VkittiDataset(torch.utils.data.Dataset):
-    def __init__(self, cfg, transforms):
+    def __init__(self, cfg, transforms, scenes=[]):
         
         self.cfg = cfg
 
@@ -42,16 +42,13 @@ class VkittiDataset(torch.utils.data.Dataset):
         self.semantic_root = os.path.join(root, cfg.VKITTI_DATASET.DATASET_PATH.SEMANTIC)
         self.coco = COCO(os.path.join(root, cfg.VKITTI_DATASET.DATASET_PATH.COCO_ANNOTATION))
 
-        self.semantic_imgs = get_vkitti_files(self.semantic_root, exclude, "png")
-        self.depth_full_imgs = get_vkitti_files(self.depth_full_root, exclude, "png")
-        self.depth_gt_imgs = get_vkitti_files(self.depth_gt_root, exclude, "png")
-        self.depth_proj_imgs = get_vkitti_files(self.depth_proj_root, exclude, "png")
+        self.semantic_imgs = get_vkitti_files(self.semantic_root, exclude, "png", scenes)
+        self.depth_full_imgs = get_vkitti_files(self.depth_full_root, exclude, "png", scenes)
+        self.depth_gt_imgs = get_vkitti_files(self.depth_gt_root, exclude, "png", scenes)
+        self.depth_proj_imgs = get_vkitti_files(self.depth_proj_root, exclude, "png", scenes)
 
         # get ids and shuffle
         self.ids = list(sorted(self.coco.imgs.keys()))
-        if cfg.VKITTI_DATASET.SHUFFLE:
-            print("Shuffling samples")
-            random.Random(4).shuffle(self.ids)
 
         catIds = self.coco.getCatIds()
         categories = self.coco.loadCats(catIds)
@@ -337,58 +334,18 @@ class VkittiDataModule(LightningDataModule):
         super().__init__()
         self.cfg = cfg
         self.batch_size = cfg.BATCH_SIZE
-    
-    def get_dataset(self, cfg, transforms):
-
-        vkitti_dataset = VkittiDataset(cfg, transforms)
-
-        if cfg.VKITTI_DATASET.SPLIT_DATASET:
-
-            train_size, val_size, test_size = cfg.VKITTI_DATASET.SPLITS
-
-            if train_size + val_size + test_size > 1:
-                raise AssertionError("split sizes must add up to 1.0")
-
-            len_val = math.floor(len(vkitti_dataset)*val_size)
-            len_test = math.floor(len(vkitti_dataset)*test_size)
-
-            if train_size + val_size + test_size == 1:
-                len_train = len(vkitti_dataset) - len_val - len_test
-            else:
-                len_train = math.floor(len(vkitti_dataset)*train_size)
-
-            if len_train < 1 or len_val < 1:
-                raise AssertionError("datasets length cannot be zero")
-
-            train_set, val_set, test_set = random_split(vkitti_dataset, [len_train, len_val, len_test], generator=torch.Generator().manual_seed(42))
-            print("Training set: {} samples".format(len_train))
-            print("Evaluating set: {} samples".format(len_val))
-            print("Test set: {} samples".format(len_test))
-
-            return {
-                "train_set":train_set,
-                "val_set": val_set,
-                "test_set": test_set
-            }
-        else:
-            print("{} samples on this dataset".format(len(vkitti_dataset)))
-            return {
-                "dataset": vkitti_dataset
-            }
-
 
     def train_dataset(self) -> VkittiDataset:
 
-        train_dataset = self.get_dataset(self.cfg, get_train_transforms(self.cfg))["train_set"]
-
-        return train_dataset
+        return VkittiDataset(self.cfg, get_train_transforms(self.cfg), self.cfg.TRAINING_SCENES)
 
     def train_dataloader(self) -> DataLoader:
         train_dataset = self.train_dataset()
+        print("Number of training samples: {}".format(len(train_dataset)))
         train_loader = torch.utils.data.DataLoader(
             train_dataset,
             batch_size=self.batch_size,
-            shuffle=True,
+            shuffle=self.cfg.VKITTI_DATASET.SHUFFLE,
             pin_memory=True,
             drop_last=True,
             num_workers=4,
@@ -400,12 +357,11 @@ class VkittiDataModule(LightningDataModule):
     
     def val_dataset(self) -> VkittiDataset:
 
-        val_dataset = self.get_dataset(self.cfg, get_val_transforms(self.cfg))["val_set"]
-
-        return val_dataset
+        return VkittiDataset(self.cfg, get_val_transforms(self.cfg), self.cfg.EVAL_SCENES)
 
     def val_dataloader(self) -> DataLoader:
         val_dataset = self.val_dataset()
+        print("Number of eval samples: {}".format(len(val_dataset)))
         val_loader = torch.utils.data.DataLoader(
             val_dataset,
             batch_size=self.batch_size,
@@ -421,16 +377,15 @@ class VkittiDataModule(LightningDataModule):
 
     def predict_dataset(self) -> VkittiDataset:
 
-        predict_dataset = self.get_dataset(self.cfg, get_val_transforms(self.cfg))["test_set"]
-
-        return predict_dataset
+        return VkittiDataset(self.cfg, get_val_transforms(self.cfg), self.cfg.TEST_SCENES)
 
     def predict_dataloader(self) -> DataLoader:
         predict_dataset = self.predict_dataset()
+        print("Number of test samples: {}".format(len(predict_dataset)))
         predict_loader = torch.utils.data.DataLoader(
             predict_dataset,
             batch_size=self.batch_size,
-            shuffle=True,
+            shuffle=False,
             pin_memory=True,
             drop_last=True,
             num_workers=4,

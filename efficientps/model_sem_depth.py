@@ -176,7 +176,7 @@ class Semantic_Depth(pl.LightningModule):
             'optimizer': self.optimizer,
             'lr_scheduler': ReduceLROnPlateau(self.optimizer,
                                               mode='min',
-                                              patience=10,
+                                              patience=5,
                                               factor=0.1,
                                               min_lr=self.cfg.SOLVER.BASE_LR_SEM_DEPTH*1e-4,
                                               verbose=True),
