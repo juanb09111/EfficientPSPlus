@@ -53,8 +53,6 @@ def add_custom_params(cfg):
     cfg.VKITTI_DATASET.STUFF_CLASSES = 12
     cfg.VKITTI_DATASET.SHUFFLE = True
     cfg.VKITTI_DATASET.MAX_SAMPLES = 100
-    cfg.VKITTI_DATASET.SPLIT_DATASET= True
-    cfg.VKITTI_DATASET.SPLITS= [0.80, 0.15, 0.05]
     cfg.VKITTI_DATASET.DATASET_PATH.ROOT = "datasets/vkitti2"
     cfg.VKITTI_DATASET.DATASET_PATH.RGB = "vkitti_2.0.3_rgb"
     cfg.VKITTI_DATASET.DATASET_PATH.SEMANTIC = "vkitti_2.0.3_classSegmentation"
@@ -77,6 +75,9 @@ def add_custom_params(cfg):
     cfg.VKITTI_DATASET.DATASET_PATH.PRED_JSON_SEMANTIC = "vkitti2_semantic_predictions.json"
     
     cfg.VKITTI_DATASET.EXCLUDE = ["15-deg-left", "15-deg-right", "30-deg-left", "30-deg-right"]
+    cfg.VKITTI_DATASET.TRAINING_SCENES = ["Scene01", "Scene06", "Scene20"]
+    cfg.VKITTI_DATASET.EVAL_SCENES = ["Scene18"] # 339 unique samples
+    cfg.VKITTI_DATASET.TEST_SCENES = ["Scene02"] # 233 unique samples
 
     #Dataset type
     cfg.DATASET_TYPE = "vkitti2"
