@@ -337,7 +337,7 @@ class VkittiDataModule(LightningDataModule):
 
     def train_dataset(self) -> VkittiDataset:
 
-        return VkittiDataset(self.cfg, get_train_transforms(self.cfg), self.cfg.TRAINING_SCENES)
+        return VkittiDataset(self.cfg, get_train_transforms(self.cfg), self.cfg.VKITTI_DATASET.TRAINING_SCENES)
 
     def train_dataloader(self) -> DataLoader:
         train_dataset = self.train_dataset()
@@ -357,7 +357,7 @@ class VkittiDataModule(LightningDataModule):
     
     def val_dataset(self) -> VkittiDataset:
 
-        return VkittiDataset(self.cfg, get_val_transforms(self.cfg), self.cfg.EVAL_SCENES)
+        return VkittiDataset(self.cfg, get_val_transforms(self.cfg), self.cfg.VKITTI_DATASET.EVAL_SCENES)
 
     def val_dataloader(self) -> DataLoader:
         val_dataset = self.val_dataset()
@@ -377,7 +377,7 @@ class VkittiDataModule(LightningDataModule):
 
     def predict_dataset(self) -> VkittiDataset:
 
-        return VkittiDataset(self.cfg, get_val_transforms(self.cfg), self.cfg.TEST_SCENES)
+        return VkittiDataset(self.cfg, get_val_transforms(self.cfg), self.cfg.VKITTI_DATASET.TEST_SCENES)
 
     def predict_dataloader(self) -> DataLoader:
         predict_dataset = self.predict_dataset()
