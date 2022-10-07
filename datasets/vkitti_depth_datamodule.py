@@ -25,7 +25,7 @@ from tqdm import tqdm
 torch.manual_seed(0)
 
 class VkittiDataset(torch.utils.data.Dataset):
-    def __init__(self, cfg, transforms, scenes=[]):
+    def __init__(self, cfg, transforms, scenes):
         
         self.cfg = cfg
 
@@ -47,8 +47,11 @@ class VkittiDataset(torch.utils.data.Dataset):
         self.depth_gt_imgs = get_vkitti_files(self.depth_gt_root, exclude, "png", scenes)
         self.depth_proj_imgs = get_vkitti_files(self.depth_proj_root, exclude, "png", scenes)
 
-        # get ids and shuffle
-        self.ids = list(sorted(self.coco.imgs.keys()))
+        # Filter ids by scenes
+        im_ids = list(sorted(self.coco.imgs.keys()))
+        rgb_images = self.coco.loadImgs(ids=im_ids)
+        rgb_images = list(filter(lambda im_obj: im_obj["file_name"].split("/")[-6] in scenes, rgb_images))
+        self.ids = list(map(lambda im_obj: im_obj["id"], rgb_images))
 
         catIds = self.coco.getCatIds()
         categories = self.coco.loadCats(catIds)
