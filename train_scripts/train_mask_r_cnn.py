@@ -78,9 +78,9 @@ def train(args):
     # logger.info(efficientps.print)
     ModelSummary(maskrcnn, max_depth=-1)
     # Callbacks / Hooks
-    early_stopping = EarlyStopping('train_loss_epoch', patience=30, mode='min')
-    checkpoint = ModelCheckpoint(monitor='train_loss_epoch',
-                                 mode='min',
+    early_stopping = EarlyStopping('val_map', patience=30, mode='max')
+    checkpoint = ModelCheckpoint(monitor='val_map',
+                                 mode='max',
                                  dirpath=cfg.CALLBACKS.CHECKPOINT_DIR,
                                  save_last=True,
                                  verbose=True)
