@@ -88,7 +88,7 @@ def train(args):
     lr_monitor = LearningRateMonitor(logging_interval='epoch')
 
     #logger
-    tb_logger = pl_loggers.TensorBoardLogger("tb_logs_4", name="maskrcnn")
+    tb_logger = pl_loggers.TensorBoardLogger("tb_logs_5", name="maskrcnn")
     # Create a pytorch lighting trainer
     trainer = pl.Trainer(
         # weights_summary='full',

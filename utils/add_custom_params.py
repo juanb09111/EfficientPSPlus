@@ -104,6 +104,7 @@ def add_custom_params(cfg):
     cfg.SOLVER.BASE_LR_DEPTH = 0.0001
     cfg.SOLVER.BASE_LR_SEM_DEPTH = 0.0001
     cfg.SOLVER.BASE_LR_PAN_DEPTH = 0.0001
+    cfg.SOLVER.BASE_LR_PAN = 0.0001
     # Runner
     cfg.BATCH_SIZE = 2
     cfg.CHECKPOINT_PATH_TRAINING = ""

@@ -80,7 +80,7 @@ def train(args):
     lr_monitor = LearningRateMonitor(logging_interval='epoch')
 
     #logger
-    tb_logger = pl_loggers.TensorBoardLogger("tb_logs_4", name="effps_pan_depth")
+    tb_logger = pl_loggers.TensorBoardLogger("tb_logs_4", name="effps_pan_depth_2")
     # Create a pytorch lighting trainer
     trainer = pl.Trainer(
         # weights_summary='full',

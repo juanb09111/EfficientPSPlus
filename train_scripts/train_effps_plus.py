@@ -61,7 +61,7 @@ def train(gpu, args):
 
     logger.info(efficientps.print)
     # Callbacks / Hooks
-    early_stopping = EarlyStopping('PQ', patience=5, mode='max')
+    early_stopping = EarlyStopping('PQ', patience=30, mode='max')
     checkpoint = ModelCheckpoint(monitor='PQ',
                                  mode='max',
                                  dirpath=cfg.CALLBACKS.CHECKPOINT_DIR,
