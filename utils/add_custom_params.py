@@ -79,6 +79,19 @@ def add_custom_params(cfg):
     cfg.VKITTI_DATASET.EVAL_SCENES = ["Scene18"] # 339 unique samples
     cfg.VKITTI_DATASET.TEST_SCENES = ["Scene02"] # 233 unique samples
 
+    #youtube dataset
+
+    cfg.YT_DATASET = CfgNode()
+    cfg.YT_DATASET.NORMALIZE = CfgNode()
+    cfg.YT_DATASET.NORMALIZE.MEAN = (0.485, 0.456, 0.406)
+    cfg.YT_DATASET.NORMALIZE.STD = (0.229, 0.224, 0.225)
+    cfg.YT_DATASET.SHUFFLE = True
+    cfg.YT_DATASET.MAX_SAMPLES = 100
+    cfg.YT_DATASET.DATASET_PATH = CfgNode()
+    cfg.YT_DATASET.DATASET_PATH.ROOT = "datasets/vkitti2"
+    cfg.YT_DATASET.DATASET_PATH.RGB_TRAIN = "train/JPEGImages"
+    cfg.YT_DATASET.DATASET_PATH.ANN_TRAIN = "train.json"
+
     #Dataset type
     cfg.DATASET_TYPE = "vkitti2"
     cfg.NUM_GPUS = 4
