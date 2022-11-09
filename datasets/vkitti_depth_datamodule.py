@@ -25,7 +25,7 @@ from tqdm import tqdm
 torch.manual_seed(0)
 
 class VkittiDataset(torch.utils.data.Dataset):
-    def __init__(self, cfg, transforms, scenes):
+    def __init__(self, cfg, transforms, scenes, aug=None):
         
         self.cfg = cfg
 
@@ -42,15 +42,18 @@ class VkittiDataset(torch.utils.data.Dataset):
         self.semantic_root = os.path.join(root, cfg.VKITTI_DATASET.DATASET_PATH.SEMANTIC)
         self.coco = COCO(os.path.join(root, cfg.VKITTI_DATASET.DATASET_PATH.COCO_ANNOTATION))
 
-        self.semantic_imgs = get_vkitti_files(self.semantic_root, exclude, "png", scenes)
-        self.depth_full_imgs = get_vkitti_files(self.depth_full_root, exclude, "png", scenes)
-        self.depth_gt_imgs = get_vkitti_files(self.depth_gt_root, exclude, "png", scenes)
-        self.depth_proj_imgs = get_vkitti_files(self.depth_proj_root, exclude, "png", scenes)
+        self.semantic_imgs = get_vkitti_files(self.semantic_root, exclude, "png", scenes, aug=aug)
+        self.depth_full_imgs = get_vkitti_files(self.depth_full_root, exclude, "png", scenes, aug=aug)
+        self.depth_gt_imgs = get_vkitti_files(self.depth_gt_root, exclude, "png", scenes, aug=aug)
+        self.depth_proj_imgs = get_vkitti_files(self.depth_proj_root, exclude, "png", scenes, aug=aug)
 
         # Filter ids by scenes
         im_ids = list(sorted(self.coco.imgs.keys()))
         rgb_images = self.coco.loadImgs(ids=im_ids)
         rgb_images = list(filter(lambda im_obj: im_obj["file_name"].split("/")[-6] in scenes, rgb_images))
+        if aug != None:
+            rgb_images = list(filter(lambda im_obj: im_obj["file_name"].split("/")[-5] == aug, rgb_images))
+
         self.ids = list(map(lambda im_obj: im_obj["id"], rgb_images))
 
         catIds = self.coco.getCatIds()
@@ -380,7 +383,7 @@ class VkittiDataModule(LightningDataModule):
 
     def predict_dataset(self) -> VkittiDataset:
 
-        return VkittiDataset(self.cfg, get_val_transforms(self.cfg), self.cfg.VKITTI_DATASET.TEST_SCENES)
+        return VkittiDataset(self.cfg, get_val_transforms(self.cfg), self.cfg.VKITTI_DATASET.TEST_SCENES, aug="clone")
 
     def predict_dataloader(self) -> DataLoader:
         predict_dataset = self.predict_dataset()
