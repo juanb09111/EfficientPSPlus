@@ -96,7 +96,7 @@ class Semantic(pl.LightningModule):
 
         predictions.update({'semantic': semantic_logits})
         preds = F.softmax(predictions["semantic"], dim=1)
-        preds = F.argmax(preds, dim=1)
+        preds = torch.argmax(preds, dim=1)
 
         return {
             'preds': preds,

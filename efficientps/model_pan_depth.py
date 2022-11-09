@@ -122,7 +122,6 @@ class Pan_Depth(pl.LightningModule):
         loss.update(semantic_loss)
         loss.update(refine_loss)
         loss.update(instance_losses)
-        loss.update({"loss_sum": depth_loss["depth_loss"] + refine_loss["refine_loss"]})
 
         predictions.update({'depth': depth})
         predictions.update({'semantic': refined_logits})
@@ -143,8 +142,8 @@ class Pan_Depth(pl.LightningModule):
         predictions, _ = self.shared_step(batch)
 
         pred_depth = torch.squeeze(predictions["depth"], 1)*mask_gt
-        # --------------------------
-        #semantic
+        # # --------------------------
+        # #semantic
         pred_semantic = F.softmax(predictions["semantic"], dim=1)
 
         # Metrics Semantic
@@ -155,7 +154,7 @@ class Pan_Depth(pl.LightningModule):
         self.valid_acc_depth(pred_depth, sparse_depth_gt.squeeze_(1)*mask_gt)
         self.log('RMSE', self.valid_acc_depth, on_step=False, on_epoch=True, sync_dist=True)
 
-        # # Instance
+        # Instance
 
         # target = [dict(
         #         boxes=instance.get("gt_boxes").tensor,
@@ -178,13 +177,11 @@ class Pan_Depth(pl.LightningModule):
         #         boxes=torch.zeros((0, 4), dtype=torch.float).to(self.device),
         #         labels=torch.zeros((0), dtype=torch.long).to(self.device),
         #         masks=torch.zeros((0), dtype=torch.bool).to(self.device),
-        #         scores=torch.zeros((0), dtype=torch.float).to(self.device)
+        #         scores=torch.zeros((0), dtype=torch.float32).to(self.device)
         #     ) for _ in batch["instance"]]
         
         # # Metric
-        # # self.valid_acc_bbx(preds, target)
-        # # self.log_dict(self.valid_acc_bbx, on_step=False, on_epoch=True, sync_dist=True)
-        # self.valid_acc_bbx.update(preds, target)
+        # self.valid_acc_bbx(preds, target)
 
         #Panoptic
         panoptic_result = panoptic_segmentation_module(self.cfg,
@@ -220,9 +217,9 @@ class Pan_Depth(pl.LightningModule):
         # )
         # self.valid_acc_bbx.reset()
 
-        # print(outputs)
+        # # print(outputs)
         gathered_results = self.all_gather(outputs)
-        # print("gathered_results", gathered_results)
+        # # print("gathered_results", gathered_results)
         if self.local_rank == 0:
 
             for gr in gathered_results:
@@ -230,12 +227,6 @@ class Pan_Depth(pl.LightningModule):
                 gr["image_id"] = [im_id for sublist in gr["image_id"] for im_id in sublist]
                 gr["panoptic"] = [pan for sublist in gr["panoptic"] for pan in sublist]
                 
-
-            #1. convert coco gt to panoptic gt
-            #2. Detections to coco format
-            #3. Detections coco format to panoptic format
-            #4. Evaluate
-            # Create and save all predictions files
             generate_pred_panoptic(self.cfg, gathered_results)
 
             # Compute PQ metric with panpticapi
@@ -266,29 +257,66 @@ class Pan_Depth(pl.LightningModule):
             self.log("PQ", 0, sync_dist=True)
 
 
-    # def predict_step(self, batch, batch_idx, dataloader_idx=0):
+    def predict_step(self, batch, batch_idx, dataloader_idx=0):
 
-    #     predictions = dict()
-    #     # Feature extraction
-    #     features = self.backbone.extract_endpoints(batch['image'])
-    #     pyramid_features = self.fpn(features)
-    #     # Heads Predictions
-    #     output_size = batch["image"][0].shape[-2:]
-    #     semantic_logits, _ = self.semantic_head(pyramid_features, output_size)
+        predictions = dict()
 
-    #     predictions.update({'semantic': semantic_logits})
-    #     preds = F.softmax(predictions["semantic"], dim=1)
-    #     preds = F.argmax(preds, dim=1)
+        img = batch['image']
+        semantic_gt = batch["semantic"]
+        mask = batch['mask']
+        coors = batch['virtual_lidar']
+        k_nn_indices = batch['k_nn_indices']
+        sparse_depth = batch['sparse_depth']
 
-    #     return {
-    #         'preds': preds,
-    #         'targets': batch["semantic"],
-    #         'image_id': batch['image_id']
-    #     }
+        # Feature extraction
+        features = self.backbone.extract_endpoints(batch['image'])
+        pyramid_features = self.fpn(features)
+        # Heads Predictions
+        output_size = batch["image"][0].shape[-2:]
+        semantic_logits, _ = self.semantic_head(pyramid_features, output_size)
+        pred_instance, _ = self.instance_head(pyramid_features)
+
+         # Depth Predictions
+        depth, _ = self.depth_head(img,
+            sparse_depth, 
+            mask, 
+            coors, 
+            k_nn_indices,
+            semantic_logits=semantic_logits)
+
+        # Refine Head
+        refined_logits, _ = self.refine_head(
+            semantic_logits, 
+            depth,
+            # depth_full, 
+            output_size, 
+            semantic_gt=semantic_gt)
+
+        preds_semantic = F.softmax(refined_logits, dim=1)
+        preds_semantic = torch.argmax(preds_semantic, dim=1)
+
+        predictions.update({'depth': depth})
+        predictions.update({'semantic': refined_logits})
+        predictions.update({'instance': pred_instance})
+
+        #Visualize Predictions, mask and semantic
+        # visualize_pred(self.cfg, batch["image"], predictions, self.device, batch_idx)
+        #Panoptic fusion
+        panoptic_result = panoptic_segmentation_module(self.cfg,
+            predictions,
+            self.device)
+            
+        return {'panoptic': panoptic_result,
+            'image_id': batch['image_id'],
+            'depth': depth,
+            'instance': pred_instance,
+            'semantic': preds_semantic, 
+            'images': img
+        }
         
     
     def on_predict_epoch_end(self, results):
-    #     #Save Panoptic results
+        #Save Panoptic results
         print("saving panoptic results")
         panoptic_predictions(self.cfg, results[0])
     #     print("saving panoptic results")
@@ -313,7 +341,7 @@ class Pan_Depth(pl.LightningModule):
             'optimizer': self.optimizer,
             'lr_scheduler': ReduceLROnPlateau(self.optimizer,
                                               mode='min',
-                                              patience=5,
+                                              patience=10,
                                               factor=0.1,
                                               min_lr=self.cfg.SOLVER.BASE_LR_PAN_DEPTH*1e-4,
                                               verbose=True),

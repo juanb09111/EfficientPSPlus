@@ -30,7 +30,7 @@ class EffificientPS(pl.LightningModule):
         """
         super().__init__()
         self.save_hyperparameters()
-        self.learning_rate = cfg.SOLVER.BASE_LR
+        self.learning_rate = cfg.SOLVER.BASE_LR_PAN
         self.cfg = cfg
         self.backbone = generate_backbone_EfficientPS(cfg)
         self.fpn = TwoWayFpn(
@@ -38,8 +38,8 @@ class EffificientPS(pl.LightningModule):
         self.semantic_head = SemanticHead(cfg.NUM_CLASS)
         self.instance_head = InstanceHead(cfg)
 
-        self.valid_acc = JaccardIndex(cfg.NUM_CLASS)
-        # self.valid_acc_bbx = MeanAveragePrecision(class_metrics=True)
+        # self.valid_acc = JaccardIndex(cfg.NUM_CLASS)
+        self.valid_acc_bbx = MeanAveragePrecision(class_metrics=True)
         self.obj_categories=categories
         
         # self.epoch = 0
@@ -114,7 +114,7 @@ class EffificientPS(pl.LightningModule):
         #         boxes=torch.zeros((0, 4), dtype=torch.float).to(self.device),
         #         labels=torch.zeros((0), dtype=torch.long).to(self.device),
         #         masks=torch.zeros((0), dtype=torch.bool).to(self.device),
-        #         scores=torch.zeros((0), dtype=torch.float).to(self.device)
+        #         scores=torch.zeros((0), dtype=torch.float32).to(self.device)
         #     ) for _ in batch["instance"]]
         
         # self.valid_acc_bbx.update(preds, target)
@@ -123,8 +123,6 @@ class EffificientPS(pl.LightningModule):
         panoptic_result = panoptic_segmentation_module(self.cfg,
             predictions,
             self.device)
-        # print(panoptic_result.shape)
-        # print(batch['image_id'])
         return {
             'panoptic': panoptic_result,
             'image_id': batch['image_id']
@@ -165,11 +163,6 @@ class EffificientPS(pl.LightningModule):
                 gr["image_id"] = [im_id for sublist in gr["image_id"] for im_id in sublist]
                 gr["panoptic"] = [pan for sublist in gr["panoptic"] for pan in sublist]
                 
-
-            #1. convert coco gt to panoptic gt
-            #2. Detections to coco format
-            #3. Detections coco format to panoptic format
-            #4. Evaluate
             # Create and save all predictions files
             generate_pred_panoptic(self.cfg, gathered_results)
 
@@ -235,7 +228,7 @@ class EffificientPS(pl.LightningModule):
         
 
     def configure_optimizers(self):
-        print("Optimizer - using {} with lr {}".format(self.cfg.SOLVER.NAME, self.cfg.SOLVER.BASE_LR))
+        print("Optimizer - using {} with lr {}".format(self.cfg.SOLVER.NAME, self.cfg.SOLVER.BASE_LR_PAN))
         if self.cfg.SOLVER.NAME == "Adam":
             self.optimizer = torch.optim.Adam(self.parameters(),
                                          lr=self.learning_rate,
@@ -254,7 +247,7 @@ class EffificientPS(pl.LightningModule):
                                               mode='max',
                                               patience=5,
                                               factor=0.1,
-                                              min_lr=self.cfg.SOLVER.BASE_LR*1e-4,
+                                              min_lr=self.cfg.SOLVER.BASE_LR_PAN*1e-4,
                                               verbose=True),
             'monitor': 'PQ'
         }
@@ -265,7 +258,7 @@ class EffificientPS(pl.LightningModule):
             lr_scale = min(1., float(self.trainer.global_step + 1) /
                                     float(self.cfg.SOLVER.WARMUP_ITERS*self.cfg.NUM_GPUS))
             for pg in optimizer.param_groups:
-                pg['lr'] = lr_scale * self.cfg.SOLVER.BASE_LR
+                pg['lr'] = lr_scale * self.cfg.SOLVER.BASE_LR_PAN
 
         # update params
         optimizer.step(closure=closure)

@@ -43,19 +43,22 @@ def train(args):
     if cfg.DATASET_TYPE == "vkitti2":
         datamodule = VkittiDataModule(cfg)
 
+    checkpoint_path = cfg.CHECKPOINT_PATH_INFERENCE if (args.predict or args.eval) else cfg.CHECKPOINT_PATH_TRAINING
+    
     # Create model or load a checkpoint
-    if os.path.exists(cfg.CHECKPOINT_PATH_TRAINING):
+    if os.path.exists(checkpoint_path):
         print('""""""""""""""""""""""""""""""""""""""""""""""')
-        print("Loading model from {}".format(cfg.CHECKPOINT_PATH_TRAINING))
+        print("Loading model from {}".format(checkpoint_path))
         print('""""""""""""""""""""""""""""""""""""""""""""""')
         efficientps = Depth.load_from_checkpoint(cfg=cfg,
-            checkpoint_path=cfg.CHECKPOINT_PATH_TRAINING)
+            checkpoint_path=checkpoint_path)
     else:
         print('""""""""""""""""""""""""""""""""""""""""""""""')
         print("Creating a new model")
         print('""""""""""""""""""""""""""""""""""""""""""""""')
         efficientps = Depth(cfg)
         cfg.CHECKPOINT_PATH_TRAINING = None
+        cfg.CHECKPOINT_PATH_INFERENCE = None
 
     # logger.info(efficientps.print)
     ModelSummary(efficientps, max_depth=-1)
@@ -70,7 +73,7 @@ def train(args):
     lr_monitor = LearningRateMonitor(logging_interval='epoch')
 
     #logger
-    tb_logger = pl_loggers.TensorBoardLogger("tb_logs_5", name="effps_depth")
+    tb_logger = pl_loggers.TensorBoardLogger("tb_logs", name="effps_depth")
     # Create a pytorch lighting trainer
     trainer = pl.Trainer(
         # weights_summary='full',
@@ -84,7 +87,7 @@ def train(args):
         fast_dev_run=cfg.SOLVER.FAST_DEV_RUN if args.fast_dev else False,
         callbacks=[early_stopping, checkpoint, lr_monitor],
         # precision=cfg.PRECISION,
-        resume_from_checkpoint=cfg.CHECKPOINT_PATH_TRAINING,
+        resume_from_checkpoint=cfg.CHECKPOINT_PATH_INFERENCE if (args.predict or args.eval) else cfg.CHECKPOINT_PATH_TRAINING,
         # gradient_clip_val=0,
         accumulate_grad_batches=cfg.SOLVER.ACCUMULATE_GRAD
     )
@@ -92,5 +95,13 @@ def train(args):
     if args.tune:
         lr_finder = trainer.tuner.lr_find(efficientps, datamodule, min_lr=1e-4, max_lr=0.1, num_training=100)
         print("LR found:", lr_finder.suggestion())
+    elif args.predict:
+        efficientps.eval()
+        with torch.no_grad():
+            trainer.predict(efficientps, datamodule)
+    elif args.eval:
+        efficientps.eval()
+        with torch.no_grad():
+            trainer.validate(efficientps, datamodule)
     else:
         trainer.fit(efficientps, datamodule)

@@ -95,9 +95,8 @@ class Instance(pl.LightningModule):
                 boxes=torch.zeros((0, 4), dtype=torch.float).to(self.device),
                 labels=torch.zeros((0), dtype=torch.long).to(self.device),
                 masks=torch.zeros((0), dtype=torch.bool).to(self.device),
-                scores=torch.zeros((0), dtype=torch.float).to(self.device)
+                scores=torch.zeros((0), dtype=torch.float32).to(self.device)
             ) for _ in batch["instance"]]
-        
         self.valid_acc_bbx.update(preds, target)
         # self.valid_acc_sgm.update(preds, target)
     

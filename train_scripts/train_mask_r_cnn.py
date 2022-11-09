@@ -20,6 +20,9 @@ from utils.add_custom_params import add_custom_params
 from datasets.fridge_objects_dataset import EfficientDetDataModule
 from datasets.odFridgeObjects_cats import obj_categories as odFridgeObjects_cats
 
+from datasets.yt_2019_datamodule import YoutubeDataModule
+from datasets.yt_cats import obj_categories as yt_cats
+
 from datasets.vkitti_depth_datamodule import VkittiDataModule
 from datasets.vkitti_cats import obj_categories as vkitti_cats
 
@@ -60,20 +63,27 @@ def train(args):
             img_size=img_size,
         )
         obj_categories = odFridgeObjects_cats
+    
+    elif cfg.DATASET_TYPE == "yt":
+        datamodule = YoutubeDataModule(cfg)
+        obj_categories = yt_cats
+
+    checkpoint_path = cfg.CHECKPOINT_PATH_INFERENCE if (args.predict or args.eval) else cfg.CHECKPOINT_PATH_TRAINING
 
     # Create model or load a checkpoint
-    if os.path.exists(cfg.CHECKPOINT_PATH_TRAINING):
+    if os.path.exists(checkpoint_path):
         print('""""""""""""""""""""""""""""""""""""""""""""""')
-        print("Loading model from {}".format(cfg.CHECKPOINT_PATH_TRAINING))
+        print("Loading model from {}".format(checkpoint_path))
         print('""""""""""""""""""""""""""""""""""""""""""""""')
         maskrcnn = Instance.load_from_checkpoint(cfg=cfg,
-            checkpoint_path=cfg.CHECKPOINT_PATH_TRAINING, categories=obj_categories)
+            checkpoint_path=checkpoint_path, categories=obj_categories)
     else:
         print('""""""""""""""""""""""""""""""""""""""""""""""')
         print("Creating a new model")
         print('""""""""""""""""""""""""""""""""""""""""""""""')
         maskrcnn = Instance(cfg, categories=obj_categories)
         cfg.CHECKPOINT_PATH_TRAINING = None
+        cfg.CHECKPOINT_PATH_INFERENCE = None
 
     # logger.info(efficientps.print)
     ModelSummary(maskrcnn, max_depth=-1)
@@ -88,7 +98,7 @@ def train(args):
     lr_monitor = LearningRateMonitor(logging_interval='epoch')
 
     #logger
-    tb_logger = pl_loggers.TensorBoardLogger("tb_logs_5", name="maskrcnn")
+    tb_logger = pl_loggers.TensorBoardLogger("tb_logs", name="maskrcnn")
     # Create a pytorch lighting trainer
     trainer = pl.Trainer(
         # weights_summary='full',
@@ -102,7 +112,7 @@ def train(args):
         fast_dev_run=cfg.SOLVER.FAST_DEV_RUN if args.fast_dev else False,
         callbacks=[early_stopping, checkpoint, lr_monitor],
         # precision=cfg.PRECISION,
-        resume_from_checkpoint=cfg.CHECKPOINT_PATH_TRAINING,
+        resume_from_checkpoint=cfg.CHECKPOINT_PATH_INFERENCE if (args.predict or args.eval) else cfg.CHECKPOINT_PATH_TRAINING,
         # gradient_clip_val=0,
         # accumulate_grad_batches=cfg.SOLVER.ACCUMULATE_GRAD
     )
@@ -111,5 +121,13 @@ def train(args):
     if args.tune:
         lr_finder = trainer.tuner.lr_find(maskrcnn, datamodule, min_lr=1e-4, max_lr=0.1, num_training=100)
         print("LR found:", lr_finder.suggestion())
+    elif args.predict:
+        maskrcnn.eval()
+        with torch.no_grad():
+            trainer.predict(maskrcnn, datamodule)
+    elif args.eval:
+        maskrcnn.eval()
+        with torch.no_grad():
+            trainer.validate(maskrcnn, datamodule)
     else:
         trainer.fit(maskrcnn, datamodule)

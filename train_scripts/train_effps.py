@@ -50,20 +50,24 @@ def train(args):
         obj_categories = vkitti_cats
 
     print("Converting dataloader to coco_panoptic json")
-    dataloader_2_coco_panoptic(cfg, datamodule.val_dataloader())
+    # dataloader_2_coco_panoptic(cfg, datamodule.val_dataloader())
+    
+    checkpoint_path = cfg.CHECKPOINT_PATH_INFERENCE if (args.predict or args.eval) else cfg.CHECKPOINT_PATH_TRAINING
+
     # Create model or load a checkpoint
-    if os.path.exists(cfg.CHECKPOINT_PATH_TRAINING):
+    if os.path.exists(checkpoint_path):
         print('""""""""""""""""""""""""""""""""""""""""""""""')
-        print("Loading model from {}".format(cfg.CHECKPOINT_PATH_TRAINING))
+        print("Loading model from {}".format(checkpoint_path))
         print('""""""""""""""""""""""""""""""""""""""""""""""')
         efficientps = EffificientPS.load_from_checkpoint(cfg=cfg,
-            checkpoint_path=cfg.CHECKPOINT_PATH_TRAINING, categories=obj_categories)
+            checkpoint_path=checkpoint_path, categories=obj_categories)
     else:
         print('""""""""""""""""""""""""""""""""""""""""""""""')
         print("Creating a new model")
         print('""""""""""""""""""""""""""""""""""""""""""""""')
         efficientps = EffificientPS(cfg, categories=obj_categories)
         cfg.CHECKPOINT_PATH_TRAINING = None
+        cfg.CHECKPOINT_PATH_INFERENCE = None
 
     # logger.info(efficientps.print)
     ModelSummary(efficientps, max_depth=-1)
@@ -77,7 +81,7 @@ def train(args):
     
     lr_monitor = LearningRateMonitor(logging_interval='epoch')
 
-    tb_logger = pl_loggers.TensorBoardLogger("tb_logs_4", name="effps_vkitti")
+    tb_logger = pl_loggers.TensorBoardLogger("tb_logs", name="effps_panoptic")
     # # Create a pytorch lighting trainer
     trainer = pl.Trainer(
         # weights_summary='full',
@@ -91,7 +95,7 @@ def train(args):
         fast_dev_run=cfg.SOLVER.FAST_DEV_RUN if args.fast_dev else False,
         callbacks=[early_stopping, checkpoint, lr_monitor],
         # precision=cfg.PRECISION,
-        resume_from_checkpoint=cfg.CHECKPOINT_PATH_TRAINING,
+        resume_from_checkpoint=cfg.CHECKPOINT_PATH_INFERENCE if (args.predict or args.eval) else cfg.CHECKPOINT_PATH_TRAINING,
         # gradient_clip_val=0,
         # accumulate_grad_batches=cfg.SOLVER.ACCUMULATE_GRAD
     )
@@ -100,5 +104,13 @@ def train(args):
     if args.tune:
         lr_finder = trainer.tuner.lr_find(efficientps, datamodule, min_lr=1e-4, max_lr=0.1, num_training=100)
         print("LR found:", lr_finder.suggestion())
+    elif args.predict:
+        efficientps.eval()
+        with torch.no_grad():
+            trainer.predict(efficientps, datamodule)
+    elif args.eval:
+        efficientps.eval()
+        with torch.no_grad():
+            trainer.validate(efficientps, datamodule)
     else:
         trainer.fit(efficientps, datamodule)

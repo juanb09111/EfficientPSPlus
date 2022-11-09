@@ -52,7 +52,7 @@ def semantic_predictions(cfg, outputs):
                     }
                 )
                 
-            # Save panotic_pred
+            # Save semantic_preds
             img_data['file_name'] = "{}_preds_semantic.png".format(img_data['image_id'])
             img = id2rgb(img_semantic)
             img_to_save = Image.fromarray(img)
