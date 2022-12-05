@@ -63,11 +63,18 @@ def generate_pan_2ch(args):
     cfg.merge_from_file(args.config)
 
 
-    image_json = os.path.join("..", cfg.FOREST_DATASET.DATASET_PATH.ROOT, cfg.FOREST_DATASET.DATASET_PATH.COCO_ANNOTATION_TRAIN)
-    semantic_folder = os.path.join("..", cfg.FOREST_DATASET.DATASET_PATH.ROOT, cfg.FOREST_DATASET.DATASET_PATH.SEMANTIC_TRAIN)
-    instance_folder = os.path.join("..", cfg.FOREST_DATASET.DATASET_PATH.ROOT, cfg.FOREST_DATASET.DATASET_PATH.INSTANCE_TRAIN)
-    two_ch_folder = os.path.join("..", cfg.FOREST_DATASET.DATASET_PATH.ROOT, cfg.FOREST_DATASET.DATASET_PATH.TWO_CH_PANOPTIC_SEGMENTATION_TRAIN)
-    kitti_2ch_panoptic_json = os.path.join("..", cfg.FOREST_DATASET.DATASET_PATH.ROOT, cfg.FOREST_DATASET.DATASET_PATH.TWO_CH_IMAGE_JSON_TRAIN)
+    # image_json = os.path.join("..", cfg.FOREST_DATASET.DATASET_PATH.ROOT, cfg.FOREST_DATASET.DATASET_PATH.COCO_ANNOTATION_TRAIN)
+    # semantic_folder = os.path.join("..", cfg.FOREST_DATASET.DATASET_PATH.ROOT, cfg.FOREST_DATASET.DATASET_PATH.SEMANTIC_TRAIN)
+    # instance_folder = os.path.join("..", cfg.FOREST_DATASET.DATASET_PATH.ROOT, cfg.FOREST_DATASET.DATASET_PATH.INSTANCE_TRAIN)
+    # two_ch_folder = os.path.join("..", cfg.FOREST_DATASET.DATASET_PATH.ROOT, cfg.FOREST_DATASET.DATASET_PATH.TWO_CH_PANOPTIC_SEGMENTATION_TRAIN)
+    # kitti_2ch_panoptic_json = os.path.join("..", cfg.FOREST_DATASET.DATASET_PATH.ROOT, cfg.FOREST_DATASET.DATASET_PATH.TWO_CH_IMAGE_JSON_TRAIN)
+
+    image_json = os.path.join("..", cfg.FOREST_DATASET.DATASET_PATH.ROOT, cfg.FOREST_DATASET.DATASET_PATH.COCO_ANNOTATION_VAL)
+    semantic_folder = os.path.join("..", cfg.FOREST_DATASET.DATASET_PATH.ROOT, cfg.FOREST_DATASET.DATASET_PATH.SEMANTIC_VAL)
+    instance_folder = os.path.join("..", cfg.FOREST_DATASET.DATASET_PATH.ROOT, cfg.FOREST_DATASET.DATASET_PATH.INSTANCE_VAL)
+    two_ch_folder = os.path.join("..", cfg.FOREST_DATASET.DATASET_PATH.ROOT, cfg.FOREST_DATASET.DATASET_PATH.TWO_CH_PANOPTIC_SEGMENTATION_VAL)
+    kitti_2ch_panoptic_json = os.path.join("..", cfg.FOREST_DATASET.DATASET_PATH.ROOT, cfg.FOREST_DATASET.DATASET_PATH.TWO_CH_IMAGE_JSON_VAL)
+
 
     semantic_imgs = get_forest_files(semantic_folder, "png")
     instance_imgs = get_forest_files(instance_folder, "png")
@@ -88,7 +95,7 @@ def generate_pan_2ch(args):
 
         semantic_img_filename = [s for s in semantic_imgs if basename in s][0]
         instance_img_filename = [s for s in instance_imgs if basename in s][0]
-        
+
         semantic_mask = Image.open(semantic_img_filename)
         instance_mask = Image.open(instance_img_filename).convert('RGB')
 
@@ -107,13 +114,11 @@ def generate_pan_2ch(args):
         # print(np.unique(semantic_mask), np.unique(instance_mask))
         two_ch_pan[:,:,0] = semantic_mask
         two_ch_pan[:,:,1] = id_mask
-        file_name = os.path.join(two_ch_folder.split("/")[-1], "/".join(file_name.split("/")[1:]))
-        # print(os.path.join("/".join(two_ch_folder.split("/")[:-1]), file_name))
-        file_path = os.path.join("/".join(two_ch_folder.split("/")[:-1]), file_name)
-        Image.fromarray(two_ch_pan).save(file_path)
+        file_name = os.path.join(two_ch_folder, file_name)
+        
+        Image.fromarray(two_ch_pan).save(file_name)
 
-        json_file_name = "/".join(file_path.split("/")[-7:])
-        json_file_name = ".".join([*json_file_name.rsplit('.')[:-1], "jpg"])
+        json_file_name = "/".join(file_name.split("/")[-4:])
         two_ch_images.append({
             **image,
             "file_name": json_file_name

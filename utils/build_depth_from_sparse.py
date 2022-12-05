@@ -11,7 +11,7 @@ import multiprocessing
 from detectron2.config import get_cfg
 from panopticapi.utils import get_traceback
 from add_custom_params import add_custom_params
-from get_vkitti_files import get_vkitti_files
+from get_forest_files import get_forest_files
 import shutil
 from tqdm import tqdm
 from multiprocessing import  RLock
@@ -34,7 +34,7 @@ def build_single_core(cfg, proc_id, image_set, virtual_gt_folder, depth_proj_fol
             dst_file_name = file_name.split("/")[-1]
             file_path_proj = os.path.join(depth_proj_folder, dst_file_name)
             
-            if os.path.isfile(file_path_gt) and os.path.isfile(file_path_proj):
+            if os.path.isfile(file_path_proj):
                 
                 continue
 
