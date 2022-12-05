@@ -13,22 +13,25 @@ import albumentations as A
 from albumentations.pytorch import ToTensorV2
 import numpy as np
 import random
-
+from torchvision.utils import save_image
+from torch.utils.data import DataLoader
 from detectron2.structures import Instances, BitMasks, Boxes
 
+from utils.show_ann import visualize_masks, visualize_bboxes
 import matplotlib.pyplot as plt
 import cv2
 from tqdm import tqdm
 
 torch.manual_seed(0)
-class youtubeDataset(torch.utils.data.Dataset):
+class YoutubeDataset(torch.utils.data.Dataset):
 
     def __init__(self,
                  imgs_root,
                  annotation,
                  valid_annotation=None,
                  transforms=None,
-                 n_samples=None):
+                 n_samples=None,
+                 shuffle_frames=False):
 
         self.transforms = transforms
         self.imgs_root = imgs_root
@@ -92,6 +95,10 @@ class youtubeDataset(torch.utils.data.Dataset):
                         "video_id": video_id
                     })
 
+        if shuffle_frames:
+            print("Shuffling frames")
+            random.Random(4).shuffle(self.frames)
+
         if n_samples != None:
             self.frames = self.frames[:n_samples]
 
@@ -111,14 +118,15 @@ class youtubeDataset(torch.utils.data.Dataset):
 
         img_filename = os.path.join(os.path.dirname(
             os.path.abspath(__file__)), "..", self.imgs_root, frame["file_name"])
-        basename = img_filename.split(".")[-2]
+        
+        basename = img_filename.split(".")[-2].split("/")[-2]
         source_img = np.asarray(Image.open(img_filename))
 
         if self.transforms is not None:
             
             transformed = self.transforms(
                 image=source_img,
-                masks=boxes,
+                masks=masks,
                 bboxes=boxes,
                 labels=labels
             )
@@ -138,7 +146,8 @@ class youtubeDataset(torch.utils.data.Dataset):
             instance.gt_boxes = Boxes([])
 
         return {
-            "image": source_img, 
+            "image": source_img,
+            "image_id": "_".join([str(video_id), str(index)]),
             'instance': instance, 
             "basename": basename,
             "video_id": video_id, 
@@ -151,13 +160,22 @@ class youtubeDataset(torch.utils.data.Dataset):
 def get_train_transforms(cfg):
 
     custom_transforms = []
+    h_resize, w_resize = (cfg.YT_DATASET.RESIZE.HEIGHT, cfg.YT_DATASET.RESIZE.WIDTH)
+
+
+    custom_transforms.append(A.Resize(height=h_resize, width=w_resize))
     custom_transforms.append(A.Normalize(mean=cfg.YT_DATASET.NORMALIZE.MEAN, std=cfg.YT_DATASET.NORMALIZE.STD))
     custom_transforms.append(ToTensorV2())
 
     return A.Compose(custom_transforms, bbox_params=A.BboxParams(format='pascal_voc', label_fields=['labels']))
 
 def get_val_transforms(cfg):
+
     custom_transforms = []
+    h_resize, w_resize = (cfg.YT_DATASET.RESIZE.HEIGHT, cfg.YT_DATASET.RESIZE.WIDTH)
+
+
+    custom_transforms.append(A.Resize(height=h_resize, width=w_resize))
 
     custom_transforms.append(A.Normalize(mean=cfg.YT_DATASET.NORMALIZE.MEAN, std=cfg.YT_DATASET.NORMALIZE.STD))
     custom_transforms.append(ToTensorV2())
@@ -172,17 +190,16 @@ def test_dataset(cfg, dataset, item):
     basename = sample["basename"]
     video_id = sample["video_id"]
     source_img = sample["image"]
-
     instance = sample["instance"]
 
-    save_image(source_img, os.path.join(cfg.CALLBACKS.CHECKPOINT_DIR, "dataset_test_v2", "source_img_{}.png".format(basename)))
+    save_image(source_img, os.path.join("yt_dataset_test", "source_img_{}.png".format(basename)))
     
 
     # Visualize annotations
     image = source_img.cpu().numpy().transpose((1, 2, 0))*255
     image = visualize_masks(instance.get("gt_masks").tensor)
     image = visualize_bboxes(image, instance.get("gt_boxes"))
-    cv2.imwrite(os.path.join(cfg.CALLBACKS.CHECKPOINT_DIR, "dataset_test_v2", "masks_{}.png".format(basename)), image)
+    cv2.imwrite(os.path.join("yt_dataset_test", "masks_{}.png".format(basename)), image)
     print("Dataset test finished")
 
 
@@ -190,24 +207,26 @@ class YoutubeDataModule(LightningDataModule):
     """LightningDataModule used for training EffDet
      This supports COCO dataset input
     Args:
-        cgf: config
+        cfg: config
     """
 
     def __init__(self, cfg):
         super().__init__()
         self.cfg = cfg
         self.batch_size = cfg.BATCH_SIZE
-        dataset_root = cgf.YT_DATASET.DATASET_PATH.ROOT
+        dataset_root = cfg.YT_DATASET.DATASET_PATH.ROOT
 
-        imgs_root = os.path.join(root, cgf.YT_DATASET.DATASET_PATH.RGB_TRAIN)
-        annotation = os.path.join(root, cgf.YT_DATASET.DATASET_PATH.ANN_TRAIN)
+        self.imgs_root = os.path.join(dataset_root, cfg.YT_DATASET.DATASET_PATH.RGB_TRAIN)
+        self.annotation = os.path.join(dataset_root, cfg.YT_DATASET.DATASET_PATH.ANN_TRAIN)
+        self.annotation_valid = os.path.join(dataset_root, cfg.YT_DATASET.DATASET_PATH.ANN_VALID)
         
-        train_set = youtubeDataset(imgs_root, annotation, transforms=get_train_transforms(self.cfg))
-        test_dataset(cfg, train_set, 0)
+        #Test dataset on one sample
+        # train_set = YoutubeDataset(imgs_root, annotation, transforms=get_train_transforms(self.cfg))
+        # test_dataset(cfg, train_set, 300)
 
-    def train_dataset(self) -> youtubeDataset:
+    def train_dataset(self) -> YoutubeDataset:
 
-        return youtubeDataset(imgs_root, annotation, transforms=get_train_transforms(self.cfg))
+        return YoutubeDataset(self.imgs_root, self.annotation, valid_annotation=None, transforms=get_train_transforms(self.cfg), shuffle_frames=True)
 
     def train_dataloader(self) -> DataLoader:
         train_dataset = self.train_dataset()
@@ -225,9 +244,9 @@ class YoutubeDataModule(LightningDataModule):
         return train_loader
 
     
-    def val_dataset(self) -> youtubeDataset:
+    def val_dataset(self) -> YoutubeDataset:
 
-        return youtubeDataset(imgs_root, annotation, transforms=get_val_transforms(self.cfg))
+        return YoutubeDataset(self.imgs_root, self.annotation_valid, transforms=get_val_transforms(self.cfg), n_samples=self.cfg.YT_DATASET.MAX_VALID_SAMPLES)
 
     def val_dataloader(self) -> DataLoader:
         val_dataset = self.val_dataset()
@@ -245,9 +264,9 @@ class YoutubeDataModule(LightningDataModule):
         return val_loader
 
 
-    def predict_dataset(self) -> youtubeDataset:
+    def predict_dataset(self) -> YoutubeDataset:
 
-        return youtubeDataset(imgs_root, annotation, transforms=get_val_transforms(self.cfg))
+        return YoutubeDataset(self.imgs_root, self.annotation_valid, transforms=get_val_transforms(self.cfg), n_samples=self.cfg.YT_DATASET.MAX_VALID_SAMPLES)
 
     def predict_dataloader(self) -> DataLoader:
         predict_dataset = self.predict_dataset()
@@ -279,6 +298,7 @@ class YoutubeDataModule(LightningDataModule):
                 'image': torch.stack([i['image'] for i in batch]),
                 'instance': [i['instance'] for i in batch],
                 'video_id': [i['video_id'] for i in batch],
+                'image_id': [i['image_id'] for i in batch],
                 'basename': [i['basename'] for i in batch]
             }
         return collate_fn

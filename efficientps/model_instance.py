@@ -31,7 +31,7 @@ class Instance(pl.LightningModule):
         self.fpn = TwoWayFpn(
             output_feature_size[cfg.MODEL_CUSTOM.BACKBONE.EFFICIENTNET_ID])
         self.instance_head = InstanceHead(cfg)
-        self.valid_acc_bbx = MeanAveragePrecision(class_metrics=True)
+        self.valid_acc_bbx = MeanAveragePrecision()
         # self.valid_acc_sgm = MeanAveragePrecision(class_metrics=True, iou_type="segm")
         self.obj_categories=categories
         
@@ -104,24 +104,25 @@ class Instance(pl.LightningModule):
         
         # BBoxes
         mAPs = {"val_" + k: v for k, v in self.valid_acc_bbx.compute().items()}
-        # print(mAPs)
-        mAPs_per_class = mAPs.pop("val_map_per_class")
-        mARs_per_class = mAPs.pop("val_mar_100_per_class")
+        
+        # mAPs_per_class = mAPs.pop("val_map_per_class")
+        # mARs_per_class = mAPs.pop("val_mar_100_per_class")
+        
         self.log_dict(mAPs, sync_dist=True)
-        self.log_dict(
-            {
-                f"val_map_{label}": value
-                for label, value in zip(self.obj_categories.values(), mAPs_per_class)
-            },
-            sync_dist=True,
-        )
-        self.log_dict(
-            {
-                f"val_mar_100_{label}": value
-                for label, value in zip(self.obj_categories.values(), mARs_per_class)
-            },
-            sync_dist=True,
-        )
+        # self.log_dict(
+        #     {
+        #         f"val_map_{label}": value
+        #         for label, value in zip(self.obj_categories.values(), mAPs_per_class)
+        #     },
+        #     sync_dist=True,
+        # )
+        # self.log_dict(
+        #     {
+        #         f"val_mar_100_{label}": value
+        #         for label, value in zip(self.obj_categories.values(), mARs_per_class)
+        #     },
+        #     sync_dist=True,
+        # )
         self.valid_acc_bbx.reset()
 
         # Masks

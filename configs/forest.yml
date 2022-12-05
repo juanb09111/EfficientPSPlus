@@ -1,0 +1,210 @@
+# VERSION: 2
+MODEL:
+  MASK_ON: False
+  ANCHOR_GENERATOR:
+    SIZES: [[32], [64], [128], [256]]  # One size for each in feature map
+    ASPECT_RATIOS: [[0.5, 1.0, 2.0]]  # Three aspect ratios (same for all in feature maps)
+  PROPOSAL_GENERATOR:
+    NAME: "RPNCustom"
+  RPN:
+    HEAD_NAME: "DepthwiseSepRPNHead" # Normal RPN Head "StandardRPNHead"
+    IN_FEATURES: ["P_4", "P_8", "P_16", "P_32"]
+  ROI_HEADS:
+    NAME: "CustomROIHeads"
+    IN_FEATURES: ["P_4", "P_8", "P_16", "P_32"]
+    NUM_CLASSES: 5
+    SCORE_THRESH_TEST: 0.5 # First step of panoptic fusion module
+    NMS_THRESH_TEST: 0.5 # Second step of panoptic fusion module
+TEST:
+  EVAL_PERIOD: 8000
+
+INPUT:
+  MIN_SIZE_TRAIN: (200,)
+  MIN_SIZE_TEST: 200
+
+BATCH_SIZE: 2
+NUM_CLASS: 9
+MAX_EPOCHS: 40
+MODEL_CUSTOM:
+  BACKBONE:
+    EFFICIENTNET_ID: 5 # Id of the EfficienNet model
+    LOAD_PRETRAIN: True # Load pretrained EfficienNet model
+
+SOLVER:
+  NAME: "Adam" # Adam or SGD
+
+  WARMUP_ITERS: 1000 # Set to 0 for no warmup
+
+  # ACCUMULATE_GRAD: 2 # Number of accumulated epochs for accumulated gradient
+  
+  FAST_DEV_RUN: 2
+
+  # Semantic and depth learning rates---------------
+  BASE_LR_SEM_DEPTH: 0.00032359365692962827
+
+  # Depth learning rate
+  BASE_LR_DEPTH: 0.0003715352290971726 # lr finder
+  
+  # Instance learning rate
+  # BASE_LR_INSTANCE: 0.0005248074602497726
+  BASE_LR_INSTANCE: 0.005
+
+  #Semantic
+  BASE_LR_SEMANTIC: 0.033113112148259106
+
+  #Pan Depth
+  # BASE_LR_PAN_DEPTH: 0.00034673685045253164
+  # BASE_LR_PAN_DEPTH: 0.001380384264602885 #no depth learning
+  # BASE_LR_PAN_DEPTH: 0.00034673685045253164 #second stage
+  BASE_LR_PAN_DEPTH: 0.00024547089156850307 #found
+
+  #Pan
+  BASE_LR_PAN: 0.0009120108393559099
+
+# CHECKPOINT_PATH_TRAINING: 'tb_logs_6/effps_pan_depth/version_0/checkpoints/epoch=208-step=243485.ckpt'
+CHECKPOINT_PATH_TRAINING: ""
+# CHECKPOINT_PATH_INFERENCE: 'tb_logs_6/effps_panoptic/version_1/checkpoints/epoch=85-step=100190.ckpt'
+CHECKPOINT_PATH_INFERENCE: "tb_logs_forest/maskrcnn/version_0/checkpoints/epoch=38-step=3120.ckpt"
+# DATASET_TYPE: "odFridgeObjects"
+DATASET_TYPE: "forest"
+# DATASET_TYPE: "vkitti2"
+# DATASET_TYPE: "yt"
+
+FOREST_DATASET:
+  STUFF_CLASSES: 3
+  MAX_SAMPLES: null #Number of training samples, null for all
+  SHUFFLE: True
+  NORMALIZE:
+    MEAN: (0.485, 0.456, 0.406)
+    STD: (0.229, 0.224, 0.225)
+  ORIGINAL_SIZE:
+    HEIGHT: 720
+    WIDTH: 1280
+  RANDOMCROP:
+    HEIGHT: 720
+    WIDTH: 1280
+  RESIZE:
+    # HEIGHT: 375
+    # WIDTH: 1242
+    HEIGHT: 570
+    WIDTH: 1000
+  CENTER_CROP:
+    # HEIGHT: 360
+    # WIDTH: 1200
+    HEIGHT: 570
+    WIDTH: 1000
+  HFLIP: 0.5
+  DEPTH:
+    K: 3
+    SPARSITY_TRAINING: 0.05
+    SPARSITY_EVAL: 0.20
+    MAX_DEPTH_POINTS: 8000 # Max val for HxW = 200x1000
+    MAX_DEPTH: 50
+  DATASET_PATH:
+    ROOT: "datasets/FinnForest"
+    RGB: "rgb"
+    RGB_TRAIN: "rgb/train"
+    RGB_VAL: "rgb/val"
+    SEMANTIC_TRAIN: "annotations/train/semantic"
+    SEMANTIC_VAL: "annotations/val/semantic"
+    INSTANCE_TRAIN: "annotations/train/instance"
+    INSTANCE_VAL: "annotations/val/instance"
+    DEPTH_TRAIN: "annotations/train/depth"
+    DEPTH_VAL: "annotations/val/depth"
+    DEPTH_VIRTUAL_GT: "depth"
+    DEPTH_PROJ_TRAIN: "depth_proj_train"
+    DEPTH_PROJ_VAL: "depth_proj_val"
+    COCO_ANNOTATION: "all_annotations.json"
+    COCO_ANNOTATION_TRAIN: "train.json"
+    COCO_ANNOTATION_VAL: "val.json"
+    COCO_PANOPTIC_SEGMENTATION: "forest_coco_panoptic"
+    TWO_CH_PANOPTIC_SEGMENTATION: "forest_2ch_panoptic"
+    TWO_CH_PANOPTIC_SEGMENTATION_TRAIN: "annotations/train/forest_2ch_panoptic"
+    TWO_CH_PANOPTIC_SEGMENTATION_VAL: "annotations/val/forest_2ch_panoptic"
+    COCO_PANOPTIC_ANNOTATION: "forest_coco_panoptic.json"
+    TWO_CH_IMAGE_JSON: forest_2ch_panoptic.json
+    TWO_CH_IMAGE_JSON_TRAIN: "forest_2ch_panoptic_train.json"
+    TWO_CH_IMAGE_JSON_VAL: "forest_2ch_panoptic_val.json"
+    VALID_JSON: "forest_coco_panoptic_valid.json"
+    VALID_PRED_DIR: "preds_valid"
+    PRED_DIR: "preds_2"
+    PRED_DIR_SEMANTIC: "preds_semantic"
+    PRED_DIR_INSTANCE: "preds_instance"
+    PRED_JSON: "coco_predictions.json"
+    PRED_JSON_SEMANTIC: "coco_semantic_predictions.json"
+    PRED_JSON_INSTANCE: "coco_instance_predictions.json"
+
+YT_DATASET:
+  MAX_SAMPLES: 44528
+  MAX_VALID_SAMPLES: null
+  SHUFFLE: True
+  NORMALIZE:
+    MEAN: (0.485, 0.456, 0.406)
+    STD: (0.229, 0.224, 0.225)
+  RESIZE:
+    # HEIGHT: 375
+    # WIDTH: 1242
+    HEIGHT: 512
+    WIDTH: 1024
+  DATASET_PATH:
+    ROOT: "datasets/YouTube/2019/"
+    RGB_TRAIN: "train/JPEGImages"
+    ANN_TRAIN: "train.json"
+    ANN_VALID: "valid_39580.json"
+    PRED_DIR_INSTANCE: "preds_instance_yt"
+
+VKITTI_DATASET:
+  STUFF_CLASSES: 12
+  MAX_SAMPLES: null #Number of training samples, null for all
+  SHUFFLE: True
+  NORMALIZE:
+    MEAN: (0.485, 0.456, 0.406)
+    STD: (0.229, 0.224, 0.225)
+  ORIGINAL_SIZE:
+    HEIGHT: 375
+    WIDTH: 1242
+  RANDOMCROP:
+    HEIGHT: 375
+    WIDTH: 1242
+  RESIZE:
+    # HEIGHT: 375
+    # WIDTH: 1242
+    HEIGHT: 200
+    WIDTH: 1000
+  CENTER_CROP:
+    # HEIGHT: 360
+    # WIDTH: 1200
+    HEIGHT: 200
+    WIDTH: 1000
+  HFLIP: 0.5
+  DEPTH:
+    K: 3
+    SPARSITY_TRAINING: 0.05
+    SPARSITY_EVAL: 0.20
+    MAX_DEPTH_POINTS: 8000 # Max val for HxW = 200x1000
+    MAX_DEPTH: 50
+  DATASET_PATH:
+    ROOT: "datasets/vkitti2"
+    RGB: "vkitti_2.0.3_rgb"
+    SEMANTIC: "vkitti_2.0.3_classSegmentation"
+    INSTANCE: "vkitti_2.0.3_instanceSegmentation"
+    DEPTH: "vkitti_2.0.3_depth"
+    DEPTH_VIRTUAL_GT: "depth_virtual_gt"
+    DEPTH_PROJ: "depth_proj"
+    COCO_ANNOTATION: "kitti_coco.json"
+    COCO_PANOPTIC_SEGMENTATION: "kitti_coco_panoptic"
+    TWO_CH_PANOPTIC_SEGMENTATION: "kitti_2ch_panoptic"
+    COCO_PANOPTIC_ANNOTATION: "kitti_coco_panoptic.json"
+    TWO_CH_IMAGE_JSON: "kitti_2ch_panoptic.json"
+    VALID_JSON: "kitti_coco_panoptic_valid.json"
+    VALID_PRED_DIR: "preds_valid"
+    PRED_DIR: "preds_2"
+    PRED_DIR_SEMANTIC: "preds_semantic"
+    PRED_DIR_INSTANCE: "preds_instance_best_mask"
+    PRED_JSON: "vkitti2_panoptic_predictions.json"
+    PRED_JSON_SEMANTIC: "vkitti2_semantic_predictions.json"
+    PRED_JSON_INSTANCE: "vkitti2_instance_predictions.json"
+  EXCLUDE: ["15-deg-left", "15-deg-right", "30-deg-left", "30-deg-right"]
+  TRAINING_SCENES: ["Scene01", "Scene06", "Scene20"]
+  EVAL_SCENES: ["Scene18"] # 339 unique samples
+  TEST_SCENES: ["Scene02"] # 233 unique samples

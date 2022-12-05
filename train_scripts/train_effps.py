@@ -23,6 +23,10 @@ from datasets.vkitti_depth_datamodule import VkittiDataModule
 from datasets.vkitti_cats import obj_categories as vkitti_cats
 
 
+from datasets.forest_datamodule import ForestDataModule
+from datasets.forest_cats import obj_categories as forest_cats
+
+
 
 
 def train(args):
@@ -48,9 +52,14 @@ def train(args):
     if cfg.DATASET_TYPE == "vkitti2":
         datamodule = VkittiDataModule(cfg)
         obj_categories = vkitti_cats
+    
+    if cfg.DATASET_TYPE == "forest":
+        datamodule = ForestDataModule(cfg)
+        obj_categories = forest_cats
 
     print("Converting dataloader to coco_panoptic json")
-    # dataloader_2_coco_panoptic(cfg, datamodule.val_dataloader())
+    #TODO: Generalize for other datasets
+    dataloader_2_coco_panoptic(cfg, datamodule.val_dataloader())
     
     checkpoint_path = cfg.CHECKPOINT_PATH_INFERENCE if (args.predict or args.eval) else cfg.CHECKPOINT_PATH_TRAINING
 

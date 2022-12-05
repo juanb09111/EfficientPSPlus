@@ -27,6 +27,10 @@ from datasets.vkitti_depth_datamodule import VkittiDataModule
 from datasets.vkitti_cats import obj_categories as vkitti_cats
 
 
+from datasets.forest_datamodule import ForestDataModule
+from datasets.forest_cats import obj_categories as forest_cats
+
+
 def train(args):
     
     # Retrieve Config and and custom base parameter
@@ -67,6 +71,10 @@ def train(args):
     elif cfg.DATASET_TYPE == "yt":
         datamodule = YoutubeDataModule(cfg)
         obj_categories = yt_cats
+
+    elif cfg.DATASET_TYPE == "forest":
+        datamodule = ForestDataModule(cfg)
+        obj_categories = forest_cats
 
     checkpoint_path = cfg.CHECKPOINT_PATH_INFERENCE if (args.predict or args.eval) else cfg.CHECKPOINT_PATH_TRAINING
 
@@ -110,7 +118,9 @@ def train(args):
         accelerator='gpu',
         num_sanity_val_steps=0,
         fast_dev_run=cfg.SOLVER.FAST_DEV_RUN if args.fast_dev else False,
-        callbacks=[early_stopping, checkpoint, lr_monitor],
+        # callbacks=[early_stopping, checkpoint, lr_monitor],
+        callbacks=[checkpoint, lr_monitor],
+        max_epochs=cfg.MAX_EPOCHS,
         # precision=cfg.PRECISION,
         resume_from_checkpoint=cfg.CHECKPOINT_PATH_INFERENCE if (args.predict or args.eval) else cfg.CHECKPOINT_PATH_TRAINING,
         # gradient_clip_val=0,
