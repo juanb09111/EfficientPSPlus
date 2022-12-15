@@ -18,6 +18,9 @@ def semantic_predictions(cfg, outputs):
     if cfg.DATASET_TYPE == "vkitti2":
         pred_dir = os.path.join(cfg.VKITTI_DATASET.DATASET_PATH.ROOT, cfg.VKITTI_DATASET.DATASET_PATH.PRED_DIR_SEMANTIC)
         if not os.path.exists(pred_dir): os.makedirs(pred_dir)
+    elif cfg.DATASET_TYPE == "forest":
+        pred_dir = os.path.join(cfg.FOREST_DATASET.DATASET_PATH.ROOT, cfg.FOREST_DATASET.DATASET_PATH.PRED_DIR_SEMANTIC)
+        if not os.path.exists(pred_dir): os.makedirs(pred_dir)
 
     annotations = []
     print("Saving semantic predictions to ", pred_dir)
@@ -26,7 +29,7 @@ def semantic_predictions(cfg, outputs):
     for output in tqdm(outputs):
         # print("output", len(output), len(output[0]))
         # Loop on each image of the batch
-        for img_semantic, image_id in zip(output['preds'], output['image_id']):
+        for img_semantic, image_id in zip(output['preds_sem'], output['image_id']):
             img_data = dict()
             img_data['image_id'] = image_id.item()
             # Resize the image to original size
@@ -73,6 +76,8 @@ def save_json_file(cfg, annotations):
     if cfg.DATASET_TYPE == "vkitti2":
         
         pred_path = os.path.join(cfg.VKITTI_DATASET.DATASET_PATH.ROOT, cfg.VKITTI_DATASET.DATASET_PATH.PRED_JSON_SEMANTIC)
+    elif cfg.DATASET_TYPE == "forest":
+        pred_path = os.path.join(cfg.FOREST_DATASET.DATASET_PATH.ROOT, cfg.FOREST_DATASET.DATASET_PATH.PRED_JSON_SEMANTIC)
 
     json_data={}
     json_data['annotations'] = annotations

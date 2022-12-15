@@ -38,8 +38,8 @@ class EffificientPS(pl.LightningModule):
         self.semantic_head = SemanticHead(cfg.NUM_CLASS)
         self.instance_head = InstanceHead(cfg)
 
-        # self.valid_acc = JaccardIndex(cfg.NUM_CLASS)
-        self.valid_acc_bbx = MeanAveragePrecision(class_metrics=True)
+        self.valid_acc = JaccardIndex(cfg.NUM_CLASS)
+        # self.valid_acc_bbx = MeanAveragePrecision(class_metrics=True)
         self.obj_categories=categories
         
         # self.epoch = 0
@@ -123,6 +123,7 @@ class EffificientPS(pl.LightningModule):
         panoptic_result = panoptic_segmentation_module(self.cfg,
             predictions,
             self.device)
+        # print("2", panoptic_result.shape)
         return {
             'panoptic': panoptic_result,
             'image_id': batch['image_id']
@@ -162,22 +163,40 @@ class EffificientPS(pl.LightningModule):
                 #Flatten results
                 gr["image_id"] = [im_id for sublist in gr["image_id"] for im_id in sublist]
                 gr["panoptic"] = [pan for sublist in gr["panoptic"] for pan in sublist]
-                
+            # print(gathered_results[0]["panoptic"][0])
             # Create and save all predictions files
             generate_pred_panoptic(self.cfg, gathered_results)
 
             # Compute PQ metric with panpticapi
-            pq_res = pq_compute(
-                gt_json_file= os.path.join(
+            if self.cfg.DATASET_TYPE == "vkitti2":
+                gt_json_file =os.path.join(
                     self.cfg.VKITTI_DATASET.DATASET_PATH.ROOT,
-                    self.cfg.VKITTI_DATASET.DATASET_PATH.VALID_JSON),
-                pred_json_file= os.path.join(
+                    self.cfg.VKITTI_DATASET.DATASET_PATH.VALID_JSON)
+                pred_json_file = os.path.join(
                     self.cfg.VKITTI_DATASET.DATASET_PATH.ROOT,
-                    self.cfg.VKITTI_DATASET.DATASET_PATH.PRED_JSON),
-                gt_folder= os.path.join(self.cfg.VKITTI_DATASET.DATASET_PATH.ROOT),
-                pred_folder=os.path.join(
+                    self.cfg.VKITTI_DATASET.DATASET_PATH.PRED_JSON)
+                gt_folder = os.path.join(self.cfg.VKITTI_DATASET.DATASET_PATH.ROOT)
+                pred_folder = os.path.join(
                     self.cfg.VKITTI_DATASET.DATASET_PATH.ROOT,
                     self.cfg.VKITTI_DATASET.DATASET_PATH.VALID_PRED_DIR)
+                    
+            elif self.cfg.DATASET_TYPE == "forest":
+                gt_json_file =os.path.join(
+                    self.cfg.FOREST_DATASET.DATASET_PATH.ROOT,
+                    self.cfg.FOREST_DATASET.DATASET_PATH.VALID_JSON)
+                pred_json_file = os.path.join(
+                    self.cfg.FOREST_DATASET.DATASET_PATH.ROOT,
+                    self.cfg.FOREST_DATASET.DATASET_PATH.PRED_JSON)
+                gt_folder = os.path.join(self.cfg.FOREST_DATASET.DATASET_PATH.ROOT)
+                pred_folder = os.path.join(
+                    self.cfg.FOREST_DATASET.DATASET_PATH.ROOT,
+                    self.cfg.FOREST_DATASET.DATASET_PATH.VALID_PRED_DIR)
+
+            pq_res = pq_compute(
+                gt_json_file= gt_json_file,
+                pred_json_file= pred_json_file,
+                gt_folder= gt_folder,
+                pred_folder=pred_folder
             )
             
             self.log("PQ", 100 * pq_res["All"]["pq"] * self.cfg.NUM_GPUS, sync_dist=True)
@@ -198,6 +217,7 @@ class EffificientPS(pl.LightningModule):
     def predict_step(self, batch, batch_idx, dataloader_idx=0):
 
         predictions = dict()
+        img = batch['image']
         # Feature extraction
         features = self.backbone.extract_endpoints(batch['image'])
         pyramid_features = self.fpn(features)
@@ -205,6 +225,9 @@ class EffificientPS(pl.LightningModule):
         output_size = batch["image"][0].shape[-2:]
         semantic_logits, _ = self.semantic_head(pyramid_features, output_size)
         pred_instance, _ = self.instance_head(pyramid_features)
+
+        preds_semantic = F.softmax(semantic_logits, dim=1)
+        preds_semantic = torch.argmax(preds_semantic, dim=1)
 
         predictions.update({'semantic': semantic_logits})
         predictions.update({'instance': pred_instance})
@@ -217,7 +240,10 @@ class EffificientPS(pl.LightningModule):
             self.device)
 
         return {'panoptic': panoptic_result,
-            'image_id': batch['image_id']
+            'image_id': batch['image_id'],
+            'instance': pred_instance,
+            'semantic': preds_semantic, 
+            'images': img
         }
         
     
@@ -244,12 +270,12 @@ class EffificientPS(pl.LightningModule):
         return {
             'optimizer': self.optimizer,
             'lr_scheduler': ReduceLROnPlateau(self.optimizer,
-                                              mode='max',
+                                              mode='min',
                                               patience=5,
                                               factor=0.1,
                                               min_lr=self.cfg.SOLVER.BASE_LR_PAN*1e-4,
                                               verbose=True),
-            'monitor': 'PQ'
+            'monitor': 'train_loss_epoch'
         }
 
     def optimizer_step(self, current_epoch, batch_nb, optimizer, optimizer_idx, closure, on_tpu=False, using_native_amp=False, using_lbfgs=False):

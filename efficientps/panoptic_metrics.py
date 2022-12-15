@@ -33,6 +33,11 @@ def generate_pred_panoptic(cfg, outputs):
     if cfg.DATASET_TYPE == "vkitti2":
         pred_dir = os.path.join(cfg.VKITTI_DATASET.DATASET_PATH.ROOT, cfg.VKITTI_DATASET.DATASET_PATH.VALID_PRED_DIR)
         if not os.path.exists(pred_dir): os.makedirs(pred_dir)
+        original_size = (cfg.VKITTI_DATASET.ORIGINAL_SIZE.HEIGHT, cfg.VKITTI_DATASET.ORIGINAL_SIZE.WIDTH)
+    elif cfg.DATASET_TYPE == "forest":
+        pred_dir = os.path.join(cfg.FOREST_DATASET.DATASET_PATH.ROOT, cfg.FOREST_DATASET.DATASET_PATH.VALID_PRED_DIR)
+        if not os.path.exists(pred_dir): os.makedirs(pred_dir)
+        original_size = (cfg.FOREST_DATASET.ORIGINAL_SIZE.HEIGHT, cfg.FOREST_DATASET.ORIGINAL_SIZE.WIDTH)
 
     annotations = []
     print("Saving panoptic prediction to compute validation metrics")
@@ -43,9 +48,10 @@ def generate_pred_panoptic(cfg, outputs):
             img_data = dict()
             img_data['image_id'] = image_id.item()
             # Resize the image to original size
+            # print(img_panoptic.shape)
             img_panoptic = F.interpolate(
                 img_panoptic.unsqueeze(0).unsqueeze(0).float(),
-                size=(cfg.VKITTI_DATASET.ORIGINAL_SIZE.HEIGHT, cfg.VKITTI_DATASET.ORIGINAL_SIZE.WIDTH),
+                size=original_size,
                 mode='nearest'
             )[0,0,...]
             # Create segment_info data
@@ -86,6 +92,9 @@ def save_json_file(cfg, annotations):
     if cfg.DATASET_TYPE == "vkitti2":
         gt_path = os.path.join(cfg.VKITTI_DATASET.DATASET_PATH.ROOT, cfg.VKITTI_DATASET.DATASET_PATH.VALID_JSON)
         pred_path = os.path.join(cfg.VKITTI_DATASET.DATASET_PATH.ROOT, cfg.VKITTI_DATASET.DATASET_PATH.PRED_JSON)
+    elif cfg.DATASET_TYPE == "forest":
+        gt_path = os.path.join(cfg.FOREST_DATASET.DATASET_PATH.ROOT, cfg.FOREST_DATASET.DATASET_PATH.VALID_JSON)
+        pred_path = os.path.join(cfg.FOREST_DATASET.DATASET_PATH.ROOT, cfg.FOREST_DATASET.DATASET_PATH.PRED_JSON)
 
     # Save prediction file
     with open(gt_path, "r") as f:

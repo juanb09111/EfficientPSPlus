@@ -13,7 +13,7 @@ import numpy as np
 import random
 from utils.get_forest_files import get_forest_files
 from utils.show_ann import visualize_masks, visualize_bboxes
-# from datasets.vkitti_cats import mapping
+from datasets.forest_cats import mapping
 from torchvision.utils import save_image
 from torch.utils.data import random_split, DataLoader
 from detectron2.structures import Instances, BitMasks, Boxes
@@ -25,18 +25,29 @@ from tqdm import tqdm
 torch.manual_seed(0)
 
 class ForestDataset(torch.utils.data.Dataset):
-    def __init__(self, cfg, transforms, ann_path):
+    def __init__(self, cfg, transforms, split="train"):
         
         self.cfg = cfg
         # Read config
         root = cfg.FOREST_DATASET.DATASET_PATH.ROOT
-        self.imgs_root = os.path.join(root, cfg.FOREST_DATASET.DATASET_PATH.RGB)
+        self.split = split
+        if split == "train":
+            ann_path = os.path.join(root, cfg.FOREST_DATASET.DATASET_PATH.COCO_ANNOTATION_TRAIN)
+            self.imgs_root = os.path.join(root, cfg.FOREST_DATASET.DATASET_PATH.RGB_TRAIN)
 
-        self.depth_full_root = os.path.join(root, cfg.FOREST_DATASET.DATASET_PATH.DEPTH)
-        self.depth_gt_root = os.path.join(root, cfg.FOREST_DATASET.DATASET_PATH.DEPTH_VIRTUAL_GT)
-        self.depth_proj_root = os.path.join(root, cfg.FOREST_DATASET.DATASET_PATH.DEPTH_PROJ)
+            self.depth_full_root = os.path.join(root, cfg.FOREST_DATASET.DATASET_PATH.DEPTH_TRAIN)
+            self.depth_gt_root = os.path.join(root, cfg.FOREST_DATASET.DATASET_PATH.DEPTH_TRAIN)
+            self.depth_proj_root = os.path.join(root, cfg.FOREST_DATASET.DATASET_PATH.DEPTH_TRAIN)
+            self.semantic_root = os.path.join(root, cfg.FOREST_DATASET.DATASET_PATH.SEMANTIC_TRAIN)
+        elif split == "val":
+            ann_path = os.path.join(root, cfg.FOREST_DATASET.DATASET_PATH.COCO_ANNOTATION_VAL)
+            self.imgs_root = os.path.join(root, cfg.FOREST_DATASET.DATASET_PATH.RGB_VAL)
 
-        self.semantic_root = os.path.join(root, cfg.FOREST_DATASET.DATASET_PATH.SEMANTIC)
+            self.depth_full_root = os.path.join(root, cfg.FOREST_DATASET.DATASET_PATH.DEPTH_VAL)
+            self.depth_gt_root = os.path.join(root, cfg.FOREST_DATASET.DATASET_PATH.DEPTH_VAL)
+            self.depth_proj_root = os.path.join(root, cfg.FOREST_DATASET.DATASET_PATH.DEPTH_VAL)
+            self.semantic_root = os.path.join(root, cfg.FOREST_DATASET.DATASET_PATH.SEMANTIC_VAL)
+        
         self.coco = COCO(ann_path)
 
         self.semantic_imgs = get_forest_files(self.semantic_root, "png")
@@ -117,21 +128,22 @@ class ForestDataset(torch.utils.data.Dataset):
         
         # depth_full_img_filename = [s for s in self.depth_full_imgs if basename in s][0]
 
-        # depth_gt_img_filename = [s for s in self.depth_gt_imgs if basename in s][0]
+        depth_gt_img_filename = [s for s in self.depth_gt_imgs if basename in s][0]
         
-        # depth_proj_img_filename = [s for s in self.depth_proj_imgs if basename in s][0]
+        depth_proj_img_filename = [s for s in self.depth_proj_imgs if basename in s][0]
         # print(semantic_img_filename)
         semantic_mask = Image.open(semantic_img_filename)
-        # semantic_mask = self.mask_to_class(np.array(semantic_mask))
+        semantic_mask = self.mask_to_class(np.array(semantic_mask))
         semantic_mask = np.asarray(semantic_mask, dtype=np.long)    
 
         # depth_full = np.asarray(Image.open(depth_full_img_filename))/255
-
-        # depth_gt = np.asarray(Image.open(depth_gt_img_filename))/255
+        # depth_gt = np.asarray(Image.open(depth_gt_img_filename))
+        # print("here2!!", np.unique(depth_gt))
+        depth_gt = np.asarray(Image.open(depth_gt_img_filename))*50.0/255
         # # print("gt",np.unique(depth_gt), np.count_nonzero(depth_gt))
 
         
-        # depth_proj = np.asarray(Image.open(depth_proj_img_filename))/255
+        depth_proj = np.asarray(Image.open(depth_proj_img_filename))*50.0/255
         # # print("proj",np.unique(depth_proj), np.count_nonzero(depth_proj))
         
         
@@ -191,8 +203,8 @@ class ForestDataset(torch.utils.data.Dataset):
 
         ann["semantic_mask"] = semantic_mask
         # ann["depth_full"] = depth_full
-        # ann["depth_gt"] = depth_gt
-        # ann["depth_proj"] = depth_proj
+        ann["depth_gt"] = depth_gt
+        ann["depth_proj"] = depth_proj
         
         return img_filename, ann
 
@@ -202,7 +214,10 @@ class ForestDataset(torch.utils.data.Dataset):
 
         basename = img_filename.split(".")[-2]
 
-        img_filename = os.path.join(self.cfg.FOREST_DATASET.DATASET_PATH.ROOT, self.cfg.FOREST_DATASET.DATASET_PATH.RGB, img_filename)
+        if self.split == "train":
+            img_filename = os.path.join(self.cfg.FOREST_DATASET.DATASET_PATH.ROOT, self.cfg.FOREST_DATASET.DATASET_PATH.RGB_TRAIN, img_filename)
+        elif self.split == "val": 
+            img_filename = os.path.join(self.cfg.FOREST_DATASET.DATASET_PATH.ROOT, self.cfg.FOREST_DATASET.DATASET_PATH.RGB_VAL, img_filename)
         source_img = np.asarray(Image.open(img_filename))
         image_id = ann["image_id"]
         
@@ -210,7 +225,7 @@ class ForestDataset(torch.utils.data.Dataset):
             
             transformed = self.transforms(
                 image=source_img,
-                masks=[*ann["masks"], ann["semantic_mask"], ann['semantic_mask'], ann['semantic_mask'], ann['semantic_mask']],
+                masks=[*ann["masks"], ann['depth_gt'], ann['depth_proj'], ann['semantic_mask']],
                 # masks=[*ann["masks"], ann["depth_full"], ann['depth_gt'], ann['depth_proj'], ann['semantic_mask']],
                 bboxes=ann["boxes"],
                 labels=ann["labels"]
@@ -221,8 +236,8 @@ class ForestDataset(torch.utils.data.Dataset):
             # depth_full = transformed["masks"][-4]
             # depth_full = torch.where(depth_full >= self.cfg.FOREST_DATASET.DEPTH.MAX_DEPTH, torch.tensor([
             #     0], dtype=torch.float64), depth_full)
-            # depth_gt = transformed["masks"][-3]
-            # depth_proj = transformed["masks"][-2]
+            depth_gt = transformed["masks"][-3]
+            depth_proj = transformed["masks"][-2]
             
             semantic_mask = np.asarray(transformed['masks'][-1].cpu().numpy(), dtype=np.long)
 
@@ -240,27 +255,27 @@ class ForestDataset(torch.utils.data.Dataset):
                 instance.gt_boxes = Boxes([])
 
         
-        # imPts = torch.nonzero(depth_proj)
-        # inds = torch.randperm(imPts.shape[0])
-        # imPts = imPts[inds][:self.cfg.FOREST_DATASET.DEPTH.MAX_DEPTH_POINTS]
+        imPts = torch.nonzero(depth_proj)
+        inds = torch.randperm(imPts.shape[0])
+        imPts = imPts[inds][:self.cfg.FOREST_DATASET.DEPTH.MAX_DEPTH_POINTS]
 
         # if imPts.shape[0] < self.max_points:
         #     self.max_points = imPts.shape[0]
         #     print(self.max_points)
             # sys.stdout.write("\rmax_points {}".format(self.max_points))
 
-        # virtual_lidar = torch.zeros((imPts.shape[0], 3))
-        # virtual_lidar[:, 0:2] = imPts
-        # virtual_lidar[:, 2] = depth_proj[imPts[:, 0], imPts[:, 1]]
+        virtual_lidar = torch.zeros((imPts.shape[0], 3))
+        virtual_lidar[:, 0:2] = imPts
+        virtual_lidar[:, 2] = depth_proj[imPts[:, 0], imPts[:, 1]]
+        # print("HERE!!", torch.unique(virtual_lidar[:, 2]))
+        mask = torch.zeros(depth_proj.shape[-2:], dtype=torch.bool)
+        mask[imPts[:, 0], imPts[:, 1]] = True
 
-        # mask = torch.zeros(depth_proj.shape[-2:], dtype=torch.bool)
-        # mask[imPts[:, 0], imPts[:, 1]] = True
-
-        # k_nn_indices = self.find_k_nearest(virtual_lidar)
+        k_nn_indices = self.find_k_nearest(virtual_lidar)
 
         # # Remove points from depth_proj to the total number of points = MAX_DEPTH_POINTS
-        # depth_proj_ = torch.zeros_like(depth_proj)
-        # depth_proj_[imPts[:, 0], imPts[:, 1]] = depth_proj[imPts[:, 0], imPts[:, 1]]
+        depth_proj_ = torch.zeros_like(depth_proj)
+        depth_proj_[imPts[:, 0], imPts[:, 1]] = depth_proj[imPts[:, 0], imPts[:, 1]]
         
 
         return {
@@ -270,12 +285,12 @@ class ForestDataset(torch.utils.data.Dataset):
             "image_id": image_id,
             "basename": basename,
             "n_instances": num_boxes,
-            # "mask": mask,
-            # "virtual_lidar": virtual_lidar,
-            # "sparse_depth": depth_proj_.unsqueeze_(0).float(), 
-            # "sparse_depth_gt": depth_gt.unsqueeze_(0).float(), 
+            "mask": mask,
+            "virtual_lidar": virtual_lidar,
+            "sparse_depth": depth_proj_.unsqueeze_(0).float(), 
+            "sparse_depth_gt": depth_gt.unsqueeze_(0).float(), 
             # "depth_full": depth_full.unsqueeze_(0).float(), 
-            # "k_nn_indices": k_nn_indices
+            "k_nn_indices": k_nn_indices
         }
         
 
@@ -318,27 +333,34 @@ def get_val_transforms(cfg):
 
 
 
-def test_dataset(cfg, dataset, item):
-    print("Dataset test")
+def test_dataset(cfg, dataset, item, split="train"):
     sample = dataset.__getitem__(item)
     basename = sample["basename"]
     source_img = sample["image"]
     instance = sample["instance"]
     semantic = sample["semantic"]
 
-    save_image(source_img, os.path.join("forest_dataset_test", "source_img_{}.png".format(basename)))
-    save_image(source_img, os.path.join("forest_dataset_test", "source_img_{}.png".format(basename)))
+    mask = sample["mask"]
+
+    sparse_depth = sample["sparse_depth"]
+    sparse_depth_gt = sample["sparse_depth_gt"]
+
+    save_image(source_img, os.path.join("forest_dataset_test/{}".format(split), "source_img_{}.png".format(basename)))
+    save_image(sparse_depth, os.path.join("forest_dataset_test/{}".format(split), "sparse_depth_{}.png".format(basename)), normalize=True)
+    save_image(sparse_depth_gt, os.path.join("forest_dataset_test/{}".format(split), "sparse_depth_gt_{}.png".format(basename)), normalize=True)
+    save_image(mask.float(), os.path.join("forest_dataset_test/{}".format(split), "depth_mask_{}.png".format(basename)), normalize=True)
+    
 
 
     # Visualize annotations
     image = source_img.cpu().numpy().transpose((1, 2, 0))*255
     image = visualize_masks(instance.get("gt_masks").tensor)
     image = visualize_bboxes(image, instance.get("gt_boxes"))
-    cv2.imwrite(os.path.join("forest_dataset_test", "masks_{}.png".format(basename)), image)
+    cv2.imwrite(os.path.join("forest_dataset_test/{}".format(split), "masks_{}.png".format(basename)), image)
 
-    cv2.imwrite(os.path.join("forest_dataset_test", "semantic_gray_{}.png".format(basename)), semantic)
+    cv2.imwrite(os.path.join("forest_dataset_test/{}".format(split), "semantic_gray_{}.png".format(basename)), semantic)
     plt.imshow(semantic)
-    plt.savefig(os.path.join("forest_dataset_test", "semantic_{}.png".format(basename)))
+    plt.savefig(os.path.join("forest_dataset_test/{}".format(split), "semantic_{}.png".format(basename)))
     
 
 
@@ -354,20 +376,17 @@ class ForestDataModule(LightningDataModule):
         self.cfg = cfg
         self.batch_size = cfg.BATCH_SIZE
 
-        dataset_root = cfg.FOREST_DATASET.DATASET_PATH.ROOT
-        self.imgs_root = os.path.join(dataset_root, cfg.FOREST_DATASET.DATASET_PATH.RGB)
-        self.annotation_train = os.path.join(dataset_root, cfg.FOREST_DATASET.DATASET_PATH.COCO_ANNOTATION_TRAIN)
-        self.annotation_val = os.path.join(dataset_root, cfg.FOREST_DATASET.DATASET_PATH.COCO_ANNOTATION_VAL)
-        # Test dataset on one sample
-        # train_set = ForestDataset(self.cfg, get_train_transforms(self.cfg), self.annotation_train)
-        # print(len(train_set))
-        # for i in range(len(train_set)):
-        #     test_dataset(cfg, train_set, i)
-        # print("Dataset test finished")
+        # for split in ["train", "val"]:
+        #     # Test dataset on one sample
+        #     train_set = ForestDataset(self.cfg, get_train_transforms(self.cfg), split=split)
+        #     # print(len(train_set))
+        #     for i in range(len(train_set)):
+        #         test_dataset(cfg, train_set, i, split=split)
+        #     print("Dataset test finished")
 
     def train_dataset(self) -> ForestDataset:
 
-        return ForestDataset(self.cfg, get_train_transforms(self.cfg), self.annotation_train)
+        return ForestDataset(self.cfg, get_train_transforms(self.cfg), split="train")
 
     def train_dataloader(self) -> DataLoader:
         train_dataset = self.train_dataset()
@@ -387,7 +406,7 @@ class ForestDataModule(LightningDataModule):
     
     def val_dataset(self) -> ForestDataset:
 
-        return ForestDataset(self.cfg, get_val_transforms(self.cfg), self.annotation_val)
+        return ForestDataset(self.cfg, get_val_transforms(self.cfg), split="val")
 
     def val_dataloader(self) -> DataLoader:
         val_dataset = self.val_dataset()
@@ -407,7 +426,7 @@ class ForestDataModule(LightningDataModule):
 
     def predict_dataset(self) -> ForestDataset:
 
-        return ForestDataset(self.cfg, get_val_transforms(self.cfg), self.annotation_val)
+        return ForestDataset(self.cfg, get_val_transforms(self.cfg), split="val")
 
     def predict_dataloader(self) -> DataLoader:
         predict_dataset = self.predict_dataset()
@@ -441,11 +460,11 @@ class ForestDataModule(LightningDataModule):
                 'instance': [i['instance'] for i in batch],
                 'image_id': [i['image_id'] for i in batch],
                 'basename': [i['basename'] for i in batch],
-                # 'mask': torch.stack([i['mask'] for i in batch]),
-                # 'virtual_lidar': torch.stack([i['virtual_lidar'] for i in batch]),
-                # 'sparse_depth': torch.stack([i['sparse_depth'] for i in batch]),
+                'mask': torch.stack([i['mask'] for i in batch]),
+                'virtual_lidar': torch.stack([i['virtual_lidar'] for i in batch]),
+                'sparse_depth': torch.stack([i['sparse_depth'] for i in batch]),
                 # 'depth_full': torch.stack([i['depth_full'] for i in batch]),
-                # 'k_nn_indices': torch.stack([i['k_nn_indices'] for i in batch]),
-                # 'sparse_depth_gt': torch.stack([i['sparse_depth_gt'] for i in batch])
+                'k_nn_indices': torch.stack([i['k_nn_indices'] for i in batch]),
+                'sparse_depth_gt': torch.stack([i['sparse_depth_gt'] for i in batch])
             }
         return collate_fn

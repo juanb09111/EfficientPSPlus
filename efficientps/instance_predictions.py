@@ -29,7 +29,7 @@ def instance_predictions(cfg, outputs):
         if output["preds"] != None:
             for image, preds, targets, image_id in zip(output['images'], output['preds'], output['targets'], output['image_id']):
                 image_id = image_id if isinstance(image_id, str) else image_id.item()
-                im = image.cpu().numpy().transpose((1, 2, 0))*255
+                im = image.cpu().numpy().transpose((1, 2, 0))
                 vis = Visualizer(im)
 
                 instance = check_bbox_size(preds)

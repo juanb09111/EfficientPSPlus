@@ -24,7 +24,7 @@ INPUT:
 
 BATCH_SIZE: 2
 NUM_CLASS: 9
-MAX_EPOCHS: 40
+MAX_EPOCHS: 80
 MODEL_CUSTOM:
   BACKBONE:
     EFFICIENTNET_ID: 5 # Id of the EfficienNet model
@@ -33,7 +33,7 @@ MODEL_CUSTOM:
 SOLVER:
   NAME: "Adam" # Adam or SGD
 
-  WARMUP_ITERS: 1000 # Set to 0 for no warmup
+  WARMUP_ITERS: 100 # Set to 0 for no warmup
 
   # ACCUMULATE_GRAD: 2 # Number of accumulated epochs for accumulated gradient
   
@@ -59,19 +59,25 @@ SOLVER:
   BASE_LR_PAN_DEPTH: 0.00024547089156850307 #found
 
   #Pan
-  BASE_LR_PAN: 0.0009120108393559099
+  # BASE_LR_PAN: 0.0009120108393559099
+  BASE_LR_PAN: 0.004466835921509632
 
 # CHECKPOINT_PATH_TRAINING: 'tb_logs_6/effps_pan_depth/version_0/checkpoints/epoch=208-step=243485.ckpt'
+# CHECKPOINT_PATH_TRAINING: "tb_logs_forest/maskrcnn_2/version_0/checkpoints/epoch=36-step=703.ckpt"
 CHECKPOINT_PATH_TRAINING: ""
 # CHECKPOINT_PATH_INFERENCE: 'tb_logs_6/effps_panoptic/version_1/checkpoints/epoch=85-step=100190.ckpt'
-CHECKPOINT_PATH_INFERENCE: "tb_logs_forest/maskrcnn/version_0/checkpoints/epoch=38-step=3120.ckpt"
+# CHECKPOINT_PATH_INFERENCE: "tb_logs_forest/maskrcnn/version_0/checkpoints/epoch=38-step=3120.ckpt"
+# CHECKPOINT_PATH_INFERENCE: "tb_logs_forest/maskrcnn_2/version_4/checkpoints/epoch=26-step=513.ckpt"
+# CHECKPOINT_PATH_INFERENCE: "tb_logs_forest/effps/version_5/checkpoints/epoch=55-step=1064.ckpt"
+# CHECKPOINT_PATH_INFERENCE: "tb_logs_forest_2/effps_depth_200x1000_sint/version_0/checkpoints/epoch=7-step=600.ckpt"
+CHECKPOINT_PATH_INFERENCE: "tb_logs_forest_2/effps_depth_720x1280_sint/version_1/checkpoints/epoch=8-step=1350.ckpt"
 # DATASET_TYPE: "odFridgeObjects"
 DATASET_TYPE: "forest"
 # DATASET_TYPE: "vkitti2"
 # DATASET_TYPE: "yt"
 
 FOREST_DATASET:
-  STUFF_CLASSES: 3
+  STUFF_CLASSES: 4
   MAX_SAMPLES: null #Number of training samples, null for all
   SHUFFLE: True
   NORMALIZE:
@@ -86,22 +92,22 @@ FOREST_DATASET:
   RESIZE:
     # HEIGHT: 375
     # WIDTH: 1242
-    HEIGHT: 570
+    HEIGHT: 200
     WIDTH: 1000
   CENTER_CROP:
     # HEIGHT: 360
     # WIDTH: 1200
-    HEIGHT: 570
+    HEIGHT: 200
     WIDTH: 1000
   HFLIP: 0.5
   DEPTH:
     K: 3
     SPARSITY_TRAINING: 0.05
     SPARSITY_EVAL: 0.20
-    MAX_DEPTH_POINTS: 8000 # Max val for HxW = 200x1000
+    MAX_DEPTH_POINTS: 3000
     MAX_DEPTH: 50
   DATASET_PATH:
-    ROOT: "datasets/FinnForest"
+    ROOT: "datasets/FinnForest3.0"
     RGB: "rgb"
     RGB_TRAIN: "rgb/train"
     RGB_VAL: "rgb/val"
@@ -129,11 +135,12 @@ FOREST_DATASET:
     TWO_CH_IMAGE_JSON: forest_2ch_panoptic.json
     TWO_CH_IMAGE_JSON_TRAIN: "forest_2ch_panoptic_train.json"
     TWO_CH_IMAGE_JSON_VAL: "forest_2ch_panoptic_val.json"
-    VALID_JSON: "forest_coco_panoptic_valid.json"
+    VALID_JSON: "forest_coco_panoptic_val.json"
     VALID_PRED_DIR: "preds_valid"
     PRED_DIR: "preds_2"
     PRED_DIR_SEMANTIC: "preds_semantic"
     PRED_DIR_INSTANCE: "preds_instance"
+    PRED_DIR_DEPTH: "preds_depth"
     PRED_JSON: "coco_predictions.json"
     PRED_JSON_SEMANTIC: "coco_semantic_predictions.json"
     PRED_JSON_INSTANCE: "coco_instance_predictions.json"

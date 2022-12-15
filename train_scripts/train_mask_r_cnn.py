@@ -96,7 +96,7 @@ def train(args):
     # logger.info(efficientps.print)
     ModelSummary(maskrcnn, max_depth=-1)
     # Callbacks / Hooks
-    early_stopping = EarlyStopping('val_map', patience=30, mode='max')
+    early_stopping = EarlyStopping('val_map', patience=20, mode='max')
     checkpoint = ModelCheckpoint(monitor='val_map',
                                  mode='max',
                                  dirpath=cfg.CALLBACKS.CHECKPOINT_DIR,
@@ -106,7 +106,7 @@ def train(args):
     lr_monitor = LearningRateMonitor(logging_interval='epoch')
 
     #logger
-    tb_logger = pl_loggers.TensorBoardLogger("tb_logs", name="maskrcnn")
+    tb_logger = pl_loggers.TensorBoardLogger("tb_logs_forest", name="maskrcnn_4")
     # Create a pytorch lighting trainer
     trainer = pl.Trainer(
         # weights_summary='full',
@@ -118,9 +118,9 @@ def train(args):
         accelerator='gpu',
         num_sanity_val_steps=0,
         fast_dev_run=cfg.SOLVER.FAST_DEV_RUN if args.fast_dev else False,
-        # callbacks=[early_stopping, checkpoint, lr_monitor],
-        callbacks=[checkpoint, lr_monitor],
-        max_epochs=cfg.MAX_EPOCHS,
+        callbacks=[early_stopping, checkpoint, lr_monitor],
+        # callbacks=[checkpoint, lr_monitor],
+        # max_epochs=cfg.MAX_EPOCHS,
         # precision=cfg.PRECISION,
         resume_from_checkpoint=cfg.CHECKPOINT_PATH_INFERENCE if (args.predict or args.eval) else cfg.CHECKPOINT_PATH_TRAINING,
         # gradient_clip_val=0,

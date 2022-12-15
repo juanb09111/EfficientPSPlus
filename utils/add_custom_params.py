@@ -153,6 +153,7 @@ def add_custom_params(cfg):
     cfg.FOREST_DATASET.DATASET_PATH.VALID_PRED_DIR = "preds_valid"
     cfg.FOREST_DATASET.DATASET_PATH.PRED_DIR = "preds_2"
     cfg.FOREST_DATASET.DATASET_PATH.PRED_JSON = "coco_predictions.json"
+    cfg.FOREST_DATASET.DATASET_PATH.PRED_DIR_DEPTH = "preds_depth"
     cfg.FOREST_DATASET.DATASET_PATH.PRED_DIR_SEMANTIC = "preds_semantic"
     cfg.FOREST_DATASET.DATASET_PATH.PRED_DIR_INSTANCE = "preds_instance_best_mask"
     cfg.FOREST_DATASET.DATASET_PATH.PRED_JSON_INSTANCE = "coco_semantic_predictions.json"

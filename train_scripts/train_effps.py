@@ -52,14 +52,15 @@ def train(args):
     if cfg.DATASET_TYPE == "vkitti2":
         datamodule = VkittiDataModule(cfg)
         obj_categories = vkitti_cats
+        print("Converting dataloader to coco_panoptic json")
+        #TODO: Generalize for other datasets
+        dataloader_2_coco_panoptic(cfg, datamodule.val_dataloader())
     
     if cfg.DATASET_TYPE == "forest":
         datamodule = ForestDataModule(cfg)
         obj_categories = forest_cats
 
-    print("Converting dataloader to coco_panoptic json")
-    #TODO: Generalize for other datasets
-    dataloader_2_coco_panoptic(cfg, datamodule.val_dataloader())
+    
     
     checkpoint_path = cfg.CHECKPOINT_PATH_INFERENCE if (args.predict or args.eval) else cfg.CHECKPOINT_PATH_TRAINING
 
@@ -90,7 +91,7 @@ def train(args):
     
     lr_monitor = LearningRateMonitor(logging_interval='epoch')
 
-    tb_logger = pl_loggers.TensorBoardLogger("tb_logs", name="effps_panoptic")
+    tb_logger = pl_loggers.TensorBoardLogger("tb_logs_forest", name="effps")
     # # Create a pytorch lighting trainer
     trainer = pl.Trainer(
         # weights_summary='full',

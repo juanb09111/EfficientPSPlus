@@ -99,7 +99,7 @@ class Semantic(pl.LightningModule):
         preds = torch.argmax(preds, dim=1)
 
         return {
-            'preds': preds,
+            'preds_sem': preds,
             'targets': batch["semantic"],
             'image_id': batch['image_id']
         }

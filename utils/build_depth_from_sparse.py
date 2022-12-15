@@ -42,7 +42,8 @@ def build_single_core(cfg, proc_id, image_set, virtual_gt_folder, depth_proj_fol
             
             img_height, img_width  = depth_img.shape
             
-            N_num_training = np.floor(img_height*img_width*cfg.FOREST_DATASET.DEPTH.SPARSITY_TRAINING)
+            # N_num_training = np.floor(img_height*img_width*cfg.FOREST_DATASET.DEPTH.SPARSITY_TRAINING)
+            N_num_training = np.floor(14000/4)
 
             # Find depth values within range
             depth = torch.tensor(depth_img)
@@ -85,6 +86,8 @@ def build_depth_dataset(args):
 
     root = cfg.FOREST_DATASET.DATASET_PATH.ROOT
 
+    # gt_folder = os.path.join("..", root, cfg.FOREST_DATASET.DATASET_PATH.DEPTH_VAL)
+    # depth_proj_folder = os.path.join("..", root, cfg.FOREST_DATASET.DATASET_PATH.DEPTH_PROJ_VAL)
     gt_folder = os.path.join("..", root, cfg.FOREST_DATASET.DATASET_PATH.DEPTH_TRAIN)
     depth_proj_folder = os.path.join("..", root, cfg.FOREST_DATASET.DATASET_PATH.DEPTH_PROJ_TRAIN)
 

@@ -18,6 +18,8 @@ from efficientps import Depth
 from utils.add_custom_params import add_custom_params
 from datasets.vkitti_depth_datamodule import VkittiDataModule
 
+from datasets.forest_datamodule import ForestDataModule
+
 
 
 def train(args):
@@ -42,6 +44,9 @@ def train(args):
     #Get dataloaders
     if cfg.DATASET_TYPE == "vkitti2":
         datamodule = VkittiDataModule(cfg)
+    
+    if cfg.DATASET_TYPE == "forest":
+        datamodule = ForestDataModule(cfg)
 
     checkpoint_path = cfg.CHECKPOINT_PATH_INFERENCE if (args.predict or args.eval) else cfg.CHECKPOINT_PATH_TRAINING
     
@@ -73,7 +78,7 @@ def train(args):
     lr_monitor = LearningRateMonitor(logging_interval='epoch')
 
     #logger
-    tb_logger = pl_loggers.TensorBoardLogger("tb_logs", name="effps_depth")
+    tb_logger = pl_loggers.TensorBoardLogger("tb_logs_forest_2", name="effps_depth_720x1280_sint")
     # Create a pytorch lighting trainer
     trainer = pl.Trainer(
         # weights_summary='full',

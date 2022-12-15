@@ -45,14 +45,14 @@ def ignore_files(dir, files):
     return [f for f in files if os.path.isfile(os.path.join(dir, f))]
 
 rgb_2_class = [
-    ("Pine", [104,173,142], "object", 1),
-    ("Birch", [130,44,136], "object", 2),
-    ("Spruce", [128,10,129], "object", 3),
-    ("Tree", [144,96,0], "object", 4),
-    ("Track", [57,240,237], "background", 5),
-    ("Ground", [64,0,160], "background", 6),
-    ("Obstacle", [65,20,19], "object", 7),
-    ("Lake", [147,228,202], "background", 8),
+    ("Lake", [147,228,202], "background", 1),
+    ("Obstacle", [65,20,19], "object", 2),
+    ("Ground", [64,0,160], "background", 3),
+    ("Track", [57,240,237], "background", 4),
+    ("Tree", [144,96,0], "object", 5),
+    ("Spruce", [128,10,129], "object", 6),
+    ("Birch", [130,44,136], "object", 7),
+    ("Pine", [104,173,142], "object", 8),
     ("Undefined", [0, 0, 0], "background", 0)
 ]
 

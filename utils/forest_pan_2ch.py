@@ -30,14 +30,14 @@ def ignore_files(dir, files):
     return [f for f in files if os.path.isfile(os.path.join(dir, f))]
 
 mapping = {
-    (104,173,142): 1,
-    (130,44,136): 2,
-    (128,10,129): 3,
-    (144,96,0): 4,
-    (57,240,237): 5,
-    (64,0,160): 6,
-    (65,20,19): 7,
-    (147,228,202): 8,
+    (147,228,202): 1,
+    (65,20,19): 2,
+    (64,0,160): 3,
+    (57,240,237): 4,
+    (144,96,0): 5,
+    (128,10,129): 6,
+    (130,44,136): 7,
+    (104,173,142): 8,
     (0, 0, 0): 0
 }
 
@@ -63,17 +63,17 @@ def generate_pan_2ch(args):
     cfg.merge_from_file(args.config)
 
 
-    # image_json = os.path.join("..", cfg.FOREST_DATASET.DATASET_PATH.ROOT, cfg.FOREST_DATASET.DATASET_PATH.COCO_ANNOTATION_TRAIN)
-    # semantic_folder = os.path.join("..", cfg.FOREST_DATASET.DATASET_PATH.ROOT, cfg.FOREST_DATASET.DATASET_PATH.SEMANTIC_TRAIN)
-    # instance_folder = os.path.join("..", cfg.FOREST_DATASET.DATASET_PATH.ROOT, cfg.FOREST_DATASET.DATASET_PATH.INSTANCE_TRAIN)
-    # two_ch_folder = os.path.join("..", cfg.FOREST_DATASET.DATASET_PATH.ROOT, cfg.FOREST_DATASET.DATASET_PATH.TWO_CH_PANOPTIC_SEGMENTATION_TRAIN)
-    # kitti_2ch_panoptic_json = os.path.join("..", cfg.FOREST_DATASET.DATASET_PATH.ROOT, cfg.FOREST_DATASET.DATASET_PATH.TWO_CH_IMAGE_JSON_TRAIN)
+    image_json = os.path.join("..", cfg.FOREST_DATASET.DATASET_PATH.ROOT, cfg.FOREST_DATASET.DATASET_PATH.COCO_ANNOTATION_TRAIN)
+    semantic_folder = os.path.join("..", cfg.FOREST_DATASET.DATASET_PATH.ROOT, cfg.FOREST_DATASET.DATASET_PATH.SEMANTIC_TRAIN)
+    instance_folder = os.path.join("..", cfg.FOREST_DATASET.DATASET_PATH.ROOT, cfg.FOREST_DATASET.DATASET_PATH.INSTANCE_TRAIN)
+    two_ch_folder = os.path.join("..", cfg.FOREST_DATASET.DATASET_PATH.ROOT, cfg.FOREST_DATASET.DATASET_PATH.TWO_CH_PANOPTIC_SEGMENTATION_TRAIN)
+    kitti_2ch_panoptic_json = os.path.join("..", cfg.FOREST_DATASET.DATASET_PATH.ROOT, cfg.FOREST_DATASET.DATASET_PATH.TWO_CH_IMAGE_JSON_TRAIN)
 
-    image_json = os.path.join("..", cfg.FOREST_DATASET.DATASET_PATH.ROOT, cfg.FOREST_DATASET.DATASET_PATH.COCO_ANNOTATION_VAL)
-    semantic_folder = os.path.join("..", cfg.FOREST_DATASET.DATASET_PATH.ROOT, cfg.FOREST_DATASET.DATASET_PATH.SEMANTIC_VAL)
-    instance_folder = os.path.join("..", cfg.FOREST_DATASET.DATASET_PATH.ROOT, cfg.FOREST_DATASET.DATASET_PATH.INSTANCE_VAL)
-    two_ch_folder = os.path.join("..", cfg.FOREST_DATASET.DATASET_PATH.ROOT, cfg.FOREST_DATASET.DATASET_PATH.TWO_CH_PANOPTIC_SEGMENTATION_VAL)
-    kitti_2ch_panoptic_json = os.path.join("..", cfg.FOREST_DATASET.DATASET_PATH.ROOT, cfg.FOREST_DATASET.DATASET_PATH.TWO_CH_IMAGE_JSON_VAL)
+    # image_json = os.path.join("..", cfg.FOREST_DATASET.DATASET_PATH.ROOT, cfg.FOREST_DATASET.DATASET_PATH.COCO_ANNOTATION_VAL)
+    # semantic_folder = os.path.join("..", cfg.FOREST_DATASET.DATASET_PATH.ROOT, cfg.FOREST_DATASET.DATASET_PATH.SEMANTIC_VAL)
+    # instance_folder = os.path.join("..", cfg.FOREST_DATASET.DATASET_PATH.ROOT, cfg.FOREST_DATASET.DATASET_PATH.INSTANCE_VAL)
+    # two_ch_folder = os.path.join("..", cfg.FOREST_DATASET.DATASET_PATH.ROOT, cfg.FOREST_DATASET.DATASET_PATH.TWO_CH_PANOPTIC_SEGMENTATION_VAL)
+    # kitti_2ch_panoptic_json = os.path.join("..", cfg.FOREST_DATASET.DATASET_PATH.ROOT, cfg.FOREST_DATASET.DATASET_PATH.TWO_CH_IMAGE_JSON_VAL)
 
 
     semantic_imgs = get_forest_files(semantic_folder, "png")

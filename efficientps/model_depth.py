@@ -3,6 +3,7 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 import pytorch_lightning as pl
 from torchmetrics import MeanSquaredError
 from .depth_head import DepthHead
+from .depth_predictions import depth_predictions
 
 class Depth(pl.LightningModule):
     """
@@ -19,9 +20,15 @@ class Depth(pl.LightningModule):
         self.save_hyperparameters()
         self.learning_rate = cfg.SOLVER.BASE_LR_DEPTH
         self.cfg = cfg
-        self.depth_head = DepthHead(
-            cfg.VKITTI_DATASET.DEPTH.K, 
-            n_points=cfg.VKITTI_DATASET.DEPTH.MAX_DEPTH_POINTS)
+        if cfg.DATASET_TYPE == "forest":
+            self.depth_head = DepthHead(
+                cfg.FOREST_DATASET.DEPTH.K, 
+                n_points=cfg.FOREST_DATASET.DEPTH.MAX_DEPTH_POINTS)
+        elif cfg.DATASET_TYPE == "vkitti2":
+            self.depth_head = DepthHead(
+                cfg.VKITTI_DATASET.DEPTH.K, 
+                n_points=cfg.VKITTI_DATASET.DEPTH.MAX_DEPTH_POINTS)
+
         self.valid_acc = MeanSquaredError(squared=False)
     
     def on_train_start(self):
@@ -80,31 +87,30 @@ class Depth(pl.LightningModule):
         
 
 
-    # def predict_step(self, batch, batch_idx, dataloader_idx=0):
+    def predict_step(self, batch, batch_idx, dataloader_idx=0):
 
-    #     predictions = dict()
-    #     # Feature extraction
-    #     features = self.backbone.extract_endpoints(batch['image'])
-    #     pyramid_features = self.fpn(features)
-    #     # Heads Predictions
-    #     output_size = batch["image"][0].shape[-2:]
-    #     semantic_logits, _ = self.semantic_head(pyramid_features, output_size)
+        img = batch['image']
+        sparse_depth = batch['sparse_depth']
+        mask = batch['mask']
+        coors = batch['virtual_lidar']
+        k_nn_indices = batch['k_nn_indices']
+        sparse_depth_gt = batch['sparse_depth_gt']
+        
+        # Heads Predictions
+        depth, _ = self.depth_head(img, sparse_depth, mask, coors, k_nn_indices)
+        
 
-    #     predictions.update({'semantic': semantic_logits})
-    #     preds = F.softmax(predictions["semantic"], dim=1)
-    #     preds = F.argmax(preds, dim=1)
-
-    #     return {
-    #         'preds': preds,
-    #         'targets': batch["semantic"],
-    #         'image_id': batch['image_id']
-    #     }
+        return {'image_id': batch['image_id'],
+            'depth': depth,
+            "sparse_depth_gt": sparse_depth_gt,
+            "rgb_image": img
+        }
         
     
-    # def on_predict_epoch_end(self, results):
-    #     #Save Panoptic results
-    #     print("saving panoptic results")
-    #     semantic_predictions(self.cfg, results[0])
+    def on_predict_epoch_end(self, results):
+        #Save Panoptic results
+        print("saving panoptic results")
+        depth_predictions(self.cfg, results[0])
         
 
     def configure_optimizers(self):

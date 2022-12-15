@@ -55,6 +55,9 @@ def panoptic_predictions(cfg, outputs):
     if cfg.DATASET_TYPE == "vkitti2":
         pred_dir = os.path.join(cfg.VKITTI_DATASET.DATASET_PATH.ROOT, cfg.VKITTI_DATASET.DATASET_PATH.PRED_DIR)
         if not os.path.exists(pred_dir): os.makedirs(pred_dir)
+    elif cfg.DATASET_TYPE == "forest":
+        pred_dir = os.path.join(cfg.FOREST_DATASET.DATASET_PATH.ROOT, cfg.FOREST_DATASET.DATASET_PATH.PRED_DIR)
+        if not os.path.exists(pred_dir): os.makedirs(pred_dir)
 
     annotations = []
     print("Saving panoptic predictions to ", pred_dir)
@@ -134,6 +137,8 @@ def panoptic_predictions(cfg, outputs):
                 instance = check_bbox_size(instance)
                 if instance.has('pred_masks'):
                     masks = scale_resize_pad_masks(instance)
+                    p2d = (0, 0, 1, 1)
+                    masks = F.pad(masks, p2d, "constant", 0)
                     masks =np.asarray([mask.cpu().numpy() for mask in masks])
                     masks = np.where(masks > 0.5, int(1), 0)
                     instance.pred_masks = masks
@@ -167,8 +172,9 @@ def save_json_file(cfg, annotations):
     - annotations (List[dict]) : List containing prediction info for each image
     """
     if cfg.DATASET_TYPE == "vkitti2":
-        
         pred_path = os.path.join(cfg.VKITTI_DATASET.DATASET_PATH.ROOT, cfg.VKITTI_DATASET.DATASET_PATH.PRED_JSON)
+    elif cfg.DATASET_TYPE == "forest":
+        pred_path = os.path.join(cfg.FOREST_DATASET.DATASET_PATH.ROOT, cfg.FOREST_DATASET.DATASET_PATH.PRED_JSON)
 
     json_data={}
     json_data['annotations'] = annotations
