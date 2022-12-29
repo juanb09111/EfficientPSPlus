@@ -4,7 +4,7 @@ import torch.nn as nn
 from torch.nn import functional as F
 from inplace_abn import InPlaceABN
 
-from efficientps.utils import DepthwiseSeparableConv
+from pandepth.utils import DepthwiseSeparableConv
 
 
 class SemanticHead(nn.Module):

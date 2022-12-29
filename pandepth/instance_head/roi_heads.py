@@ -10,7 +10,7 @@ from detectron2.structures import Instances
 from inplace_abn import InPlaceABN
 
 
-from efficientps.utils import DepthwiseSeparableConv
+from pandepth.utils import DepthwiseSeparableConv
 
 @ROI_HEADS_REGISTRY.register()
 class CustomROIHeads(ROIHeads):

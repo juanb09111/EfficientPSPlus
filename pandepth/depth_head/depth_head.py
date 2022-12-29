@@ -1,8 +1,8 @@
 import torch
 from torch import nn
 import torch.nn.functional as F
-from efficientps.utils import DepthwiseSeparableConv as depth_wise_conv
-from efficientps.utils import ContinuousConvolution
+from pandepth.utils import DepthwiseSeparableConv as depth_wise_conv
+from pandepth.utils import ContinuousConvolution
 from inplace_abn import InPlaceABN
 
 

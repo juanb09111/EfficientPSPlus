@@ -9,7 +9,7 @@ from detectron2.modeling.proposal_generator import (
     PROPOSAL_GENERATOR_REGISTRY
 )
 
-from efficientps.utils import DepthwiseSeparableConv
+from pandepth.utils import DepthwiseSeparableConv
 
 @PROPOSAL_GENERATOR_REGISTRY.register()
 class RPNCustom(RPN):

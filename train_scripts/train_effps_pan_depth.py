@@ -14,7 +14,7 @@ from detectron2.config import get_cfg
 from detectron2.utils.events import _CURRENT_STORAGE_STACK, EventStorage
 
 
-from efficientps import Pan_Depth
+from pandepth import Pan_Depth
 from utils.add_custom_params import add_custom_params
 from utils.dataloader_2_coco_panoptic import dataloader_2_coco_panoptic
 

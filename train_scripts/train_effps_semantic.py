@@ -14,7 +14,7 @@ from detectron2.config import get_cfg
 from detectron2.utils.events import _CURRENT_STORAGE_STACK, EventStorage
 
 
-from efficientps import Semantic
+from pandepth import Semantic
 from utils.add_custom_params import add_custom_params
 
 

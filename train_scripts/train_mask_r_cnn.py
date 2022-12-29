@@ -14,7 +14,7 @@ from detectron2.config import get_cfg
 from detectron2.utils.events import _CURRENT_STORAGE_STACK, EventStorage
 
 from detectron2.modeling import build_model
-from efficientps import Instance
+from pandepth import Instance
 from utils.add_custom_params import add_custom_params
 
 from datasets.fridge_objects_dataset import EfficientDetDataModule
