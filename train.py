@@ -22,7 +22,7 @@ MODELS = ["EfficientPS",
           "EfficientPS_instance",
           "EfficientPS_depth",
           "EfficientPS_sem_depth",
-          "EfficientPS_pan_depth",
+          "pan_depth",
           "mask_r_cnn"]
 
 def get_train_loop(model_name):
@@ -38,7 +38,7 @@ def get_train_loop(model_name):
         return train_effps_depth.train
     if model_name == "EfficientPS_sem_depth":
         return train_effps_sem_depth.train
-    if model_name == "EfficientPS_pan_depth":
+    if model_name == "pan_depth":
         return train_effps_pan_depth.train
     if model_name == "mask_r_cnn":
         return train_mask_r_cnn.train

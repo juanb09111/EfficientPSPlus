@@ -139,11 +139,11 @@ class ForestDataset(torch.utils.data.Dataset):
         # depth_full = np.asarray(Image.open(depth_full_img_filename))/255
         # depth_gt = np.asarray(Image.open(depth_gt_img_filename))
         # print("here2!!", np.unique(depth_gt))
-        depth_gt = np.asarray(Image.open(depth_gt_img_filename))*50.0/255
+        depth_gt = np.asarray(Image.open(depth_gt_img_filename))/255
         # # print("gt",np.unique(depth_gt), np.count_nonzero(depth_gt))
 
         
-        depth_proj = np.asarray(Image.open(depth_proj_img_filename))*50.0/255
+        depth_proj = np.asarray(Image.open(depth_proj_img_filename))/255
         # # print("proj",np.unique(depth_proj), np.count_nonzero(depth_proj))
         
         
@@ -452,14 +452,14 @@ class ForestDataModule(LightningDataModule):
     def collate_fn_wrapper(dataset):
         def collate_fn(batch):
             len_batch = len(batch) # original batch length
-            batch = list(filter (lambda x:x["n_instances"] > 0, batch)) # filter out all the Nones
-            # batch = list(filter (lambda x:x["n_instances"] > 0 and x["few_points_flag"] == False, batch))
+            # batch = list(filter (lambda x:x["n_instances"] > 0, batch)) # filter out all the Nones
+            batch = list(filter (lambda x: x["few_points_flag"] == False, batch))
             while len_batch > len(batch): # source all the required samples from the original dataset at random
                 diff = len_batch - len(batch)
                 for i in range(diff):
                     new_sample = dataset[np.random.randint(0, len(dataset))]
                     batch.append(new_sample)
-                batch = list(filter (lambda x:x["n_instances"] > 0, batch))
+                batch = list(filter (lambda x: x["few_points_flag"] == False, batch))
             return {
                 'image': torch.stack([i['image'] for i in batch]),
                 'semantic': torch.as_tensor(np.asarray([i['semantic'] for i in batch])),

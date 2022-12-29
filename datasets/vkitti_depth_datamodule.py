@@ -140,6 +140,8 @@ class VkittiDataset(torch.utils.data.Dataset):
 
         depth_full = np.asarray(Image.open(depth_full_img_filename))/255
 
+        depth_gt = np.asarray(Image.open(depth_gt_img_filename))
+        print("here2!!", np.unique(depth_gt))
         depth_gt = np.asarray(Image.open(depth_gt_img_filename))/255
         # print("gt",np.unique(depth_gt), np.count_nonzero(depth_gt))
 
@@ -329,6 +331,8 @@ def get_val_transforms(cfg):
     return A.Compose(custom_transforms, bbox_params=A.BboxParams(format='pascal_voc', label_fields=['labels']))
 
 
+
+
 class VkittiDataModule(LightningDataModule):
     """LightningDataModule used for training EffDet
      This supports COCO dataset input
@@ -340,6 +344,10 @@ class VkittiDataModule(LightningDataModule):
         super().__init__()
         self.cfg = cfg
         self.batch_size = cfg.BATCH_SIZE
+        
+        # dataset_test = VkittiDataset(self.cfg, get_train_transforms(self.cfg), self.cfg.VKITTI_DATASET.EVAL_SCENES)
+        # for i in range(len(dataset_test)):
+        #     dataset_test.__getitem__(i)
 
     def train_dataset(self) -> VkittiDataset:
 

@@ -84,8 +84,8 @@ def panoptic_segmentation_module(cfg, outputs, device):
         semantic_stuff_logits = semantic[:dataset_map["stuff_classes"],:,:]
         # print("SHAPE", semantic.shape, Fl.shape, semantic_stuff_logits.shape)
         # print(torch.max(Fl), torch.max(semantic_stuff_logits), torch.min(Fl), torch.min(semantic_stuff_logits))
-        p2d = (0, 0, 1, 1)
-        Fl = F.pad(Fl, p2d, "constant", 0)
+        # p2d = (0, 0, 1, 1)
+        # Fl = F.pad(Fl, p2d, "constant", 0)
         inter_logits = torch.cat([semantic_stuff_logits, Fl], dim=0)
         inter_preds = torch.argmax(F.softmax(inter_logits, dim=0), dim=0)
         # Create canvas and merge everything

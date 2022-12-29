@@ -137,8 +137,8 @@ def panoptic_predictions(cfg, outputs):
                 instance = check_bbox_size(instance)
                 if instance.has('pred_masks'):
                     masks = scale_resize_pad_masks(instance)
-                    p2d = (0, 0, 1, 1)
-                    masks = F.pad(masks, p2d, "constant", 0)
+                    # p2d = (0, 0, 1, 1)
+                    # masks = F.pad(masks, p2d, "constant", 0)
                     masks =np.asarray([mask.cpu().numpy() for mask in masks])
                     masks = np.where(masks > 0.5, int(1), 0)
                     instance.pred_masks = masks
