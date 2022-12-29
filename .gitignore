@@ -6,6 +6,7 @@ vscode/
 res/
 runs/
 logs/
+backup/
 lightning_logs/
 prev_runs/
 data/
